@@ -10,6 +10,7 @@ linters:
     - gochecknoglobals
     - tagalign
     - ireturn
+    - varnamelen
   settings:
     depguard:
       rules:

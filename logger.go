@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"strings"
 
@@ -117,7 +118,7 @@ func newLoggerProvider(
 	if protocol == OTLPProtocolGRPC {
 		options := []otlploggrpc.Option{
 			otlploggrpc.WithEndpoint(endpoint),
-			otlploggrpc.WithCompressor(compressorStr),
+			otlploggrpc.WithCompressor(string(compressorStr)),
 		}
 
 		if insecure {
@@ -155,18 +156,27 @@ func newLoggerProvider(
 
 // GetLogger gets the logger instance from context.
 func GetLogger(ctx context.Context) *slog.Logger {
-	value := ctx.Value(loggerContextKey)
-	if value != nil {
-		if logger, ok := value.(*slog.Logger); ok {
-			return logger
-		}
-	}
+	logger, _ := getLogger(ctx)
 
-	return slog.New(createLogHandler("hasura-ndc-go", slog.Default(), nil))
+	return logger
 }
 
-// NewContextLogger creates a new context with a logger set.
-func NewContextLogger(parentContext context.Context, logger *slog.Logger) context.Context {
+// GetRequestLogger get the logger from the an http request.
+func GetRequestLogger(r *http.Request) *slog.Logger {
+	ctx := r.Context()
+	logger, present := getLogger(ctx)
+
+	if present {
+		return logger
+	}
+
+	requestID := getRequestID(r)
+
+	return logger.With(slog.String("request_id", requestID))
+}
+
+// NewContextWithLogger creates a new context with a logger set.
+func NewContextWithLogger(parentContext context.Context, logger *slog.Logger) context.Context {
 	return context.WithValue(parentContext, loggerContextKey, logger)
 }
 
@@ -184,4 +194,15 @@ func NewJSONLogger(logLevel string) (*slog.Logger, slog.Level, error) {
 	}))
 
 	return logger, level, nil
+}
+
+func getLogger(ctx context.Context) (*slog.Logger, bool) {
+	value := ctx.Value(loggerContextKey)
+	if value != nil {
+		if logger, ok := value.(*slog.Logger); ok {
+			return logger, true
+		}
+	}
+
+	return slog.New(createLogHandler("hasura-ndc-go", slog.Default(), nil)), false
 }

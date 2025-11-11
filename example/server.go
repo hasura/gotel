@@ -1,0 +1,71 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"net/http"
+	"os"
+	"time"
+
+	"github.com/caarlos0/env/v11"
+	"github.com/hasura/gotel"
+)
+
+func main() {
+	os.Setenv("OTEL_METRIC_EXPORT_INTERVAL", "1000")
+	os.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
+	os.Setenv("OTEL_METRICS_EXPORTER", "otlp")
+	os.Setenv("OTEL_LOGS_EXPORTER", "otlp")
+
+	logger, _, err := gotel.NewJSONLogger("DEBUG")
+	if err != nil {
+		log.Fatalf("failed to initialize logger: %s", err)
+	}
+
+	otlpConfig, err := env.ParseAsWithOptions[gotel.OTLPConfig](env.Options{
+		DefaultValueTagName: "default",
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ts, err := gotel.SetupOTelExporters(context.TODO(), &otlpConfig, "v0.1.0", logger)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer ts.Shutdown(context.TODO())
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(5 * time.Second)
+		w.Write([]byte(fmt.Sprintf("%s %s", r.Method, r.URL.Path)))
+	})
+
+	panicHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		panic("test")
+	})
+
+	options := []gotel.TracingMiddlewareOption{
+		gotel.AllowRequestHeaders([]string{}),
+		gotel.AllowResponseHeaders([]string{"Content-Type"}),
+		gotel.DebugPaths([]string{"/world"}),
+		gotel.DisableHighCardinalitySpans(true),
+		gotel.DisableHighCardinalityMetrics(false),
+	}
+
+	mux := http.NewServeMux()
+	mux.Handle("/hello", gotel.NewTracingMiddleware(ts, options...)(handler))
+	mux.Handle("/panic", gotel.NewTracingMiddleware(ts, options...)(panicHandler))
+
+	server := http.Server{
+		Addr:    ":8080",
+		Handler: mux,
+	}
+	defer server.Close()
+
+	err = server.ListenAndServe()
+	if err != nil {
+		log.Fatalf("failed to serve http: %s", err)
+	}
+}
