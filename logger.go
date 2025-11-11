@@ -118,7 +118,7 @@ func newLoggerProvider(
 	if protocol == OTLPProtocolGRPC {
 		options := []otlploggrpc.Option{
 			otlploggrpc.WithEndpoint(endpoint),
-			otlploggrpc.WithCompressor(compressorStr),
+			otlploggrpc.WithCompressor(string(compressorStr)),
 		}
 
 		if insecure {

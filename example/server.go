@@ -8,26 +8,29 @@ import (
 	"os"
 	"time"
 
+	"github.com/caarlos0/env/v11"
 	"github.com/hasura/gotel"
 )
 
 func main() {
 	os.Setenv("OTEL_METRIC_EXPORT_INTERVAL", "1000")
+	os.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "localhost:4317")
+	os.Setenv("OTEL_METRICS_EXPORTER", "otlp")
+	os.Setenv("OTEL_LOGS_EXPORTER", "otlp")
 
 	logger, _, err := gotel.NewJSONLogger("DEBUG")
 	if err != nil {
 		log.Fatalf("failed to initialize logger: %s", err)
 	}
 
-	otlpConfig := &gotel.OTLPConfig{
-		ServiceName:     "example",
-		OtlpEndpoint:    "http://localhost:4317",
-		OtlpProtocol:    string(gotel.OTLPProtocolGRPC),
-		MetricsExporter: "otlp",
-		LogsExporter:    "otlp",
+	otlpConfig, err := env.ParseAsWithOptions[gotel.OTLPConfig](env.Options{
+		DefaultValueTagName: "default",
+	})
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	ts, err := gotel.SetupOTelExporters(context.TODO(), otlpConfig, "v0.1.0", logger)
+	ts, err := gotel.SetupOTelExporters(context.TODO(), &otlpConfig, "v0.1.0", logger)
 	if err != nil {
 		log.Fatal(err)
 	}

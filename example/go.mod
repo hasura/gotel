@@ -2,7 +2,10 @@ module github.com/hasura/gotel/example
 
 go 1.25.3
 
-require github.com/hasura/gotel v0.1.0
+require (
+	github.com/caarlos0/env/v11 v11.3.1
+	github.com/hasura/gotel v0.1.0
+)
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
