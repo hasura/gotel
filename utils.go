@@ -8,15 +8,15 @@ import (
 	"log/slog"
 	"net/http"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
-	traceapi "go.opentelemetry.io/otel/trace"
 )
 
-var sensitiveHeaderRegex = regexp.MustCompile(`auth|key|secret|token`)
+var sensitiveHeaderRegex = regexp.MustCompile(`auth|key|secret|token|password`)
 
 const (
 	contentTypeJSON   = "application/json"
@@ -25,13 +25,17 @@ const (
 
 // SetSpanHeaderAttributes sets header attributes to the otel span.
 func SetSpanHeaderAttributes(
-	span traceapi.Span,
+	span trace.Span,
 	prefix string,
 	headers http.Header,
 	allowedHeaders ...string,
 ) {
+	allowedHeadersLength := len(allowedHeaders)
+
 	for key, values := range headers {
-		span.SetAttributes(attribute.StringSlice(prefix+strings.ToLower(key), values))
+		if allowedHeadersLength == 0 || slices.Contains(allowedHeaders, strings.ToLower(key)) {
+			span.SetAttributes(attribute.StringSlice(prefix+strings.ToLower(key), values))
+		}
 	}
 }
 
@@ -135,7 +139,7 @@ func debugRequestBody(w http.ResponseWriter, r *http.Request, logger *slog.Logge
 		enc := json.NewEncoder(w)
 		enc.SetEscapeHTML(false)
 
-		w.Header().Set("Content-Type", contentTypeJSON)
+		w.Header().Set(contentTypeHeader, contentTypeJSON)
 		w.WriteHeader(http.StatusUnprocessableEntity)
 
 		err := enc.Encode(map[string]any{
@@ -160,7 +164,7 @@ func writeResponseJSON(w http.ResponseWriter, statusCode int, body any, logger *
 	enc := json.NewEncoder(w)
 	enc.SetEscapeHTML(false)
 
-	w.Header().Set("Content-Type", contentTypeJSON)
+	w.Header().Set(contentTypeHeader, contentTypeJSON)
 	w.WriteHeader(statusCode)
 
 	err := enc.Encode(body)
@@ -174,4 +178,14 @@ func isContentTypeDebuggable(contentType string) bool {
 		strings.HasPrefix(contentType, "text/") ||
 		strings.HasPrefix(contentType, "application/xml") ||
 		strings.HasPrefix(contentType, "multipart/form-data")
+}
+
+func toLowerStrings(values []string) []string {
+	results := make([]string, len(values))
+
+	for i, item := range values {
+		results[i] = strings.ToLower(item)
+	}
+
+	return results
 }

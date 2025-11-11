@@ -31,7 +31,10 @@ type tracingMiddleware struct {
 }
 
 // NewTracingMiddleware creates a middleware with tracing and logger.
-func NewTracingMiddleware(exporters *OTelExporterResults, options ...TracingMiddlewareOption) (func(http.Handler) http.Handler, error) {
+func NewTracingMiddleware(
+	exporters *OTelExporterResults,
+	options ...TracingMiddlewareOption,
+) func(http.Handler) http.Handler {
 	tmOptions := &tracingMiddlewareOptions{
 		DebugPaths: []string{"/metrics", "/health", "/healthz"},
 	}
@@ -48,7 +51,7 @@ func NewTracingMiddleware(exporters *OTelExporterResults, options ...TracingMidd
 		metric.WithUnit("s"),
 	)
 	if err != nil {
-		return nil, err
+		panic(fmt.Errorf("failed to create http.server.request.duration metric: %w", err))
 	}
 
 	activeRequestsMetric, err := exporters.Meter.Int64UpDownCounter(
@@ -56,7 +59,7 @@ func NewTracingMiddleware(exporters *OTelExporterResults, options ...TracingMidd
 		metric.WithDescription("Number of active HTTP server requests"),
 	)
 	if err != nil {
-		return nil, err
+		panic(fmt.Errorf("failed to create http.server.active_requests metric: %w", err))
 	}
 
 	requestBodySizeMetric, err := exporters.Meter.Int64Histogram(
@@ -65,7 +68,7 @@ func NewTracingMiddleware(exporters *OTelExporterResults, options ...TracingMidd
 		metric.WithUnit("By"),
 	)
 	if err != nil {
-		return nil, err
+		panic(fmt.Errorf("failed to create http.server.request.body.size metric: %w", err))
 	}
 
 	responseBodySizeMetric, err := exporters.Meter.Int64Histogram(
@@ -74,7 +77,7 @@ func NewTracingMiddleware(exporters *OTelExporterResults, options ...TracingMidd
 		metric.WithUnit("By"),
 	)
 	if err != nil {
-		return nil, err
+		panic(fmt.Errorf("failed to create http.server.response.body.size metric: %w", err))
 	}
 
 	return func(next http.Handler) http.Handler {
@@ -87,11 +90,14 @@ func NewTracingMiddleware(exporters *OTelExporterResults, options ...TracingMidd
 			ResponseBodySizeMetric: responseBodySizeMetric,
 			ActiveRequestsMetric:   activeRequestsMetric,
 		}
-	}, nil
+	}
 }
 
 // ServeHTTP handles and responds to an HTTP request.
-func (tm *tracingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 	start := time.Now()
 	ctx := r.Context()
 	span := trace.SpanFromContext(ctx)
@@ -108,28 +114,28 @@ func (tm *tracingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		port = 443
 	}
 
-	commonAttrs := []attribute.KeyValue{
+	metricAttrs := []attribute.KeyValue{
 		attribute.String("http.request.method", r.Method),
 		attribute.String("url.scheme", r.URL.Scheme),
 		attribute.String("server.address", hostName),
 		attribute.Int("server.port", port),
 	}
 	requestPathAttr := attribute.String("http.request.path", r.URL.Path)
-	activeRequestsAttrs := commonAttrs
 
 	if !tm.Options.HighCardinalityMetricDisabled {
-		activeRequestsAttrs = append(activeRequestsAttrs, requestPathAttr)
+		metricAttrs = append(metricAttrs, requestPathAttr)
 	}
 
-	tm.ActiveRequestsMetric.Add(ctx, 1, metric.WithAttributeSet(attribute.NewSet(commonAttrs...)))
+	activeRequestsAttrSet := metric.WithAttributeSet(attribute.NewSet(metricAttrs...))
 
-	defer func() {
-		tm.ActiveRequestsMetric.Add(ctx, -1, metric.WithAttributeSet(attribute.NewSet(commonAttrs...)))
-	}()
+	tm.ActiveRequestsMetric.Add(ctx, 1, activeRequestsAttrSet)
 
-	metricAttrs := append(
-		activeRequestsAttrs,
-		attribute.String("network.protocol.version", fmt.Sprintf("%d.%d", r.ProtoMajor, r.ProtoMinor)),
+	metricAttrs = append(
+		metricAttrs,
+		attribute.String(
+			"network.protocol.version",
+			fmt.Sprintf("%d.%d", r.ProtoMajor, r.ProtoMinor),
+		),
 	)
 
 	if !slices.Contains(tm.Options.DebugPaths, strings.ToLower(r.URL.Path)) {
@@ -150,7 +156,7 @@ func (tm *tracingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Add HTTP semantic attributes to the server span
 	// See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#http-server-semantic-conventions
-	span.SetAttributes(commonAttrs...)
+	span.SetAttributes(metricAttrs...)
 	span.SetAttributes(requestPathAttr)
 
 	requestBodySize := r.ContentLength
@@ -165,8 +171,10 @@ func (tm *tracingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	SetSpanHeaderAttributes(span, "http.request.header", requestLogHeaders)
 
-	var ww WrapResponseWriter
-	var responseReader *bytes.Buffer
+	var (
+		ww             WrapResponseWriter
+		responseReader *bytes.Buffer
+	)
 
 	if tm.Options.ResponseWriterWrapperFunc != nil {
 		ww = tm.Options.ResponseWriterWrapperFunc(w, r.ProtoMajor)
@@ -184,6 +192,12 @@ func (tm *tracingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	responseLogData := map[string]any{}
 
 	traceResponse := func(statusCode int, description string, err any) {
+		tm.ActiveRequestsMetric.Add(
+			ctx,
+			-1,
+			activeRequestsAttrSet,
+		)
+
 		statusCodeAttr := attribute.Int(
 			"http.response.status_code",
 			statusCode,
@@ -234,7 +248,7 @@ func (tm *tracingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		printSuccess("success", logAttrs...)
 	}
 
-	if isDebug && r.Body != nil && isContentTypeDebuggable(r.Header.Get("Content-Type")) {
+	if isDebug && r.Body != nil && isContentTypeDebuggable(r.Header.Get(contentTypeHeader)) {
 		bodyStr, err := debugRequestBody(ww, r, logger)
 		if err != nil {
 			statusCode := http.StatusUnprocessableEntity
@@ -282,7 +296,7 @@ func (tm *tracingMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	tm.Next.ServeHTTP(ww, rr)
 
 	statusCode := ww.Status()
-	responseLogHeaders := NewTelemetryHeaders(r.Header, tm.Options.AllowedRequestHeaders...)
+	responseLogHeaders := NewTelemetryHeaders(ww.Header(), tm.Options.AllowedResponseHeaders...)
 	responseLogData["size"] = ww.BytesWritten()
 	responseLogData["headers"] = responseLogHeaders
 
@@ -344,7 +358,7 @@ func DebugPaths(paths []string) TracingMiddlewareOption {
 // If empty, all headers are allowed.
 func AllowRequestHeaders(names []string) TracingMiddlewareOption {
 	return func(tmo *tracingMiddlewareOptions) {
-		tmo.AllowedRequestHeaders = names
+		tmo.AllowedRequestHeaders = toLowerStrings(names)
 	}
 }
 
@@ -352,7 +366,7 @@ func AllowRequestHeaders(names []string) TracingMiddlewareOption {
 // If empty, all headers are allowed.
 func AllowResponseHeaders(names []string) TracingMiddlewareOption {
 	return func(tmo *tracingMiddlewareOptions) {
-		tmo.AllowedResponseHeaders = names
+		tmo.AllowedResponseHeaders = toLowerStrings(names)
 	}
 }
 

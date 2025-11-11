@@ -22,7 +22,7 @@ type WrapResponseWriter interface {
 	// Writes will be sent to the proxy before being written to this
 	// io.Writer. It is illegal for the tee'd writer to be modified
 	// concurrently with writes.
-	Tee(io.Writer)
+	Tee(w io.Writer)
 	// Unwrap returns the original proxied target.
 	Unwrap() http.ResponseWriter
 	// Discard causes all writes to the original ResponseWriter be discarded,
@@ -39,6 +39,7 @@ type NewWrapResponseWriterFunc func(w http.ResponseWriter, protoMajor int) WrapR
 // http.ResponseWriter interface.
 type basicWriter struct {
 	http.ResponseWriter
+
 	tee         io.Writer
 	code        int
 	bytes       int
@@ -53,6 +54,7 @@ func (b *basicWriter) WriteHeader(code int) {
 		}
 	} else if !b.wroteHeader {
 		b.code = code
+
 		b.wroteHeader = true
 		if !b.discard {
 			b.ResponseWriter.WriteHeader(code)
@@ -60,9 +62,16 @@ func (b *basicWriter) WriteHeader(code int) {
 	}
 }
 
-func (b *basicWriter) Write(buf []byte) (n int, err error) {
+func (b *basicWriter) Write(buf []byte) (int, error) {
 	b.maybeWriteHeader()
-	if !b.discard {
+
+	var (
+		n   int
+		err error
+	)
+
+	switch {
+	case !b.discard:
 		n, err = b.ResponseWriter.Write(buf)
 		if b.tee != nil {
 			_, err2 := b.tee.Write(buf[:n])
@@ -71,19 +80,15 @@ func (b *basicWriter) Write(buf []byte) (n int, err error) {
 				err = err2
 			}
 		}
-	} else if b.tee != nil {
+	case b.tee != nil:
 		n, err = b.tee.Write(buf)
-	} else {
+	default:
 		n, err = io.Discard.Write(buf)
 	}
-	b.bytes += n
-	return n, err
-}
 
-func (b *basicWriter) maybeWriteHeader() {
-	if !b.wroteHeader {
-		b.WriteHeader(http.StatusOK)
-	}
+	b.bytes += n
+
+	return n, err
 }
 
 func (b *basicWriter) Status() int {
@@ -104,4 +109,10 @@ func (b *basicWriter) Unwrap() http.ResponseWriter {
 
 func (b *basicWriter) Discard() {
 	b.discard = true
+}
+
+func (b *basicWriter) maybeWriteHeader() {
+	if !b.wroteHeader {
+		b.WriteHeader(http.StatusOK)
+	}
 }
