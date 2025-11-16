@@ -23,6 +23,16 @@ const (
 	contentTypeHeader = "Content-Type"
 )
 
+var excludedSpanHeaderAttributes = map[string]bool{
+	"baggage":       true,
+	"traceparent":   true,
+	"traceresponse": true,
+	"tracestate":    true,
+	"x-b3-sampled":  true,
+	"x-b3-spanid":   true,
+	"x-b3-traceid":  true,
+}
+
 // SetSpanHeaderAttributes sets header attributes to the otel span.
 func SetSpanHeaderAttributes(
 	span trace.Span,
@@ -33,8 +43,12 @@ func SetSpanHeaderAttributes(
 	allowedHeadersLength := len(allowedHeaders)
 
 	for key, values := range headers {
-		if allowedHeadersLength == 0 || slices.Contains(allowedHeaders, strings.ToLower(key)) {
-			span.SetAttributes(attribute.StringSlice(prefix+strings.ToLower(key), values))
+		lowerKey := strings.ToLower(key)
+		if (allowedHeadersLength == 0 && !excludedSpanHeaderAttributes[lowerKey]) ||
+			slices.Contains(allowedHeaders, strings.ToLower(key)) {
+			span.SetAttributes(
+				attribute.StringSlice(fmt.Sprintf("%s.%s", prefix, strings.ToLower(key)), values),
+			)
 		}
 	}
 }
@@ -95,7 +109,7 @@ func MaskString(input string) string {
 	case inputLength < 12:
 		return input[0:1] + strings.Repeat("*", inputLength-1)
 	default:
-		return input[0:3] + strings.Repeat("*", 7) + fmt.Sprintf("(%d)", inputLength)
+		return input[0:2] + strings.Repeat("*", 8) + fmt.Sprintf("(%d)", inputLength)
 	}
 }
 
