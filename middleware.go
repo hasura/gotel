@@ -181,7 +181,9 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 	}
 
 	requestBodySize := r.ContentLength
-	requestLogHeaders := otelutils.NewTelemetryHeaders(r.Header, tm.Options.AllowedRequestHeaders...)
+	requestLogHeaders := otelutils.NewTelemetryHeaders(
+		r.Header,
+		tm.Options.AllowedRequestHeaders...)
 	requestLogData := map[string]any{
 		"url":            r.URL.String(),
 		"method":         r.Method,
@@ -315,7 +317,9 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 	tm.Next.ServeHTTP(ww, rr)
 
 	statusCode := ww.Status()
-	responseLogHeaders := otelutils.NewTelemetryHeaders(ww.Header(), tm.Options.AllowedResponseHeaders...)
+	responseLogHeaders := otelutils.NewTelemetryHeaders(
+		ww.Header(),
+		tm.Options.AllowedResponseHeaders...)
 	responseLogData["size"] = ww.BytesWritten()
 	responseLogData["headers"] = responseLogHeaders
 

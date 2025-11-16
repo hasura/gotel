@@ -15,6 +15,9 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// UserVisibilityAttribute is the attribute to display on the Trace view.
+var UserVisibilityAttribute = attribute.String("internal.visibility", "user")
+
 var sensitiveHeaderRegex = regexp.MustCompile(`auth|key|secret|token|password`)
 
 var excludedSpanHeaderAttributes = map[string]bool{
