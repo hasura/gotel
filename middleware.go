@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/hasura/gotel/otelutils"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -107,7 +108,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 		urlScheme = "http"
 	}
 
-	hostName, port, _ := SplitHostPort(r.Host)
+	hostName, port, _ := otelutils.SplitHostPort(r.Host)
 
 	switch {
 	case port > 0:
@@ -169,7 +170,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 		semconv.UserAgentOriginal(r.UserAgent()),
 	)
 
-	peer, peerPort, _ := SplitHostPort(r.RemoteAddr)
+	peer, peerPort, _ := otelutils.SplitHostPort(r.RemoteAddr)
 
 	if peer != "" {
 		span.SetAttributes(semconv.NetworkPeerAddress(peer))
@@ -180,7 +181,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 	}
 
 	requestBodySize := r.ContentLength
-	requestLogHeaders := NewTelemetryHeaders(r.Header, tm.Options.AllowedRequestHeaders...)
+	requestLogHeaders := otelutils.NewTelemetryHeaders(r.Header, tm.Options.AllowedRequestHeaders...)
 	requestLogData := map[string]any{
 		"url":            r.URL.String(),
 		"method":         r.Method,
@@ -189,7 +190,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 		"size":           requestBodySize,
 	}
 
-	SetSpanHeaderAttributes(span, "http.request.header", requestLogHeaders)
+	otelutils.SetSpanHeaderAttributes(span, "http.request.header", requestLogHeaders)
 
 	var (
 		ww             WrapResponseWriter
@@ -314,12 +315,12 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 	tm.Next.ServeHTTP(ww, rr)
 
 	statusCode := ww.Status()
-	responseLogHeaders := NewTelemetryHeaders(ww.Header(), tm.Options.AllowedResponseHeaders...)
+	responseLogHeaders := otelutils.NewTelemetryHeaders(ww.Header(), tm.Options.AllowedResponseHeaders...)
 	responseLogData["size"] = ww.BytesWritten()
 	responseLogData["headers"] = responseLogHeaders
 
 	span.SetAttributes(semconv.HTTPResponseBodySize(ww.BytesWritten()))
-	SetSpanHeaderAttributes(span, "http.response.header", responseLogHeaders)
+	otelutils.SetSpanHeaderAttributes(span, "http.response.header", responseLogHeaders)
 
 	// skip printing very large responses.
 	if responseReader != nil && ww.BytesWritten() < 100*1024 {
