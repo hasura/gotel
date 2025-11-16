@@ -145,11 +145,14 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 	httpLogger := logger.With(slog.String("type", "http-log"))
 	isDebug := logger.Enabled(ctx, slog.LevelDebug)
 
+	if tm.Options.CustomAttributesFunc != nil {
+		metricAttrs = append(metricAttrs, tm.Options.CustomAttributesFunc(r)...)
+	}
 	// Add HTTP semantic attributes to the server span
 	// See: https://opentelemetry.io/docs/specs/semconv/http/http-spans/#http-server-semantic-conventions
 	span.SetAttributes(metricAttrs...)
 
-	if !tm.Options.HighCardinalityMetricDisabled {
+	if tm.Options.HighCardinalityMetrics {
 		metricAttrs = append(metricAttrs, semconv.URLPath(r.URL.Path))
 	}
 
@@ -343,35 +346,46 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 }
 
 type tracingMiddlewareOptions struct {
-	HighCardinalitySpanDisabled   bool
-	HighCardinalityMetricDisabled bool
-	DebugPaths                    []string
-	AllowedRequestHeaders         []string
-	AllowedResponseHeaders        []string
-	ResponseWriterWrapperFunc     NewWrapResponseWriterFunc
+	HighCardinalitySpans      bool
+	HighCardinalityMetrics    bool
+	DebugPaths                []string
+	AllowedRequestHeaders     []string
+	AllowedResponseHeaders    []string
+	ResponseWriterWrapperFunc NewWrapResponseWriterFunc
+	CustomAttributesFunc      CustomAttributesFunc
 }
+
+// CustomAttributesFunc abstracts a hook function to add custom attributes.
+type CustomAttributesFunc func(r *http.Request) []attribute.KeyValue
 
 // TracingMiddlewareOption abstracts a function to apply options to the tracing middleware.
 type TracingMiddlewareOption func(*tracingMiddlewareOptions)
 
-// DisableHighCardinalitySpans set the option to disable high cardinality spans.
+// WithHighCardinalitySpans set the option to enable high cardinality spans.
 // The request path is removed from the span name.
-func DisableHighCardinalitySpans(disabled bool) TracingMiddlewareOption {
+func WithHighCardinalitySpans(enabled bool) TracingMiddlewareOption {
 	return func(tmo *tracingMiddlewareOptions) {
-		tmo.HighCardinalitySpanDisabled = disabled
+		tmo.HighCardinalitySpans = enabled
 	}
 }
 
-// DisableHighCardinalityMetrics set the option to disable high cardinality http_path labels.
-func DisableHighCardinalityMetrics(disabled bool) TracingMiddlewareOption {
+// WithHighCardinalityMetrics set the option to enable high cardinality request path labels.
+func WithHighCardinalityMetrics(enabled bool) TracingMiddlewareOption {
 	return func(tmo *tracingMiddlewareOptions) {
-		tmo.HighCardinalityMetricDisabled = disabled
+		tmo.HighCardinalityMetrics = enabled
 	}
 }
 
-// DebugPaths return an option to add request paths to be printed logs in the debug level.
+// WithCustomAttributesFunc set the option to add custom OpenTelemetry attributes.
+func WithCustomAttributesFunc(fn CustomAttributesFunc) TracingMiddlewareOption {
+	return func(tmo *tracingMiddlewareOptions) {
+		tmo.CustomAttributesFunc = fn
+	}
+}
+
+// WithDebugPaths return an option to add request paths to be printed logs in the debug level.
 // By default, metrics and health check endpoints are added to avoid noisy logs.
-func DebugPaths(paths []string) TracingMiddlewareOption {
+func WithDebugPaths(paths []string) TracingMiddlewareOption {
 	return func(tmo *tracingMiddlewareOptions) {
 		tmo.DebugPaths = append(tmo.DebugPaths, paths...)
 	}
@@ -401,8 +415,12 @@ func ResponseWriterWrapperFunc(wrapper NewWrapResponseWriterFunc) TracingMiddlew
 }
 
 func (opts *tracingMiddlewareOptions) getRequestSpanName(req *http.Request) string {
-	if opts.HighCardinalitySpanDisabled || req.URL.Path == "" {
+	if !opts.HighCardinalitySpans {
 		return req.Method
+	}
+
+	if req.URL.Path == "" {
+		return req.Method + " /"
 	}
 
 	if req.URL.Path[0] == '/' {
