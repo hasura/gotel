@@ -3,12 +3,15 @@ package gotel
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
+	"net"
 	"net/http"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -23,6 +26,21 @@ const (
 	contentTypeHeader = "Content-Type"
 )
 
+var excludedSpanHeaderAttributes = map[string]bool{
+	"baggage":           true,
+	"traceparent":       true,
+	"traceresponse":     true,
+	"tracestate":        true,
+	"x-b3-sampled":      true,
+	"x-b3-spanid":       true,
+	"x-b3-traceid":      true,
+	"x-b3-parentspanid": true,
+	"x-b3-flags":        true,
+	"b3":                true,
+}
+
+var errInvalidHostPort = errors.New("invalid host port")
+
 // SetSpanHeaderAttributes sets header attributes to the otel span.
 func SetSpanHeaderAttributes(
 	span trace.Span,
@@ -33,8 +51,13 @@ func SetSpanHeaderAttributes(
 	allowedHeadersLength := len(allowedHeaders)
 
 	for key, values := range headers {
-		if allowedHeadersLength == 0 || slices.Contains(allowedHeaders, strings.ToLower(key)) {
-			span.SetAttributes(attribute.StringSlice(prefix+strings.ToLower(key), values))
+		lowerKey := strings.ToLower(key)
+
+		if (allowedHeadersLength == 0 && !excludedSpanHeaderAttributes[lowerKey]) ||
+			(allowedHeadersLength > 0 && slices.Contains(allowedHeaders, lowerKey)) {
+			span.SetAttributes(
+				attribute.StringSlice(fmt.Sprintf("%s.%s", prefix, lowerKey), values),
+			)
 		}
 	}
 }
@@ -95,8 +118,49 @@ func MaskString(input string) string {
 	case inputLength < 12:
 		return input[0:1] + strings.Repeat("*", inputLength-1)
 	default:
-		return input[0:3] + strings.Repeat("*", 7) + fmt.Sprintf("(%d)", inputLength)
+		return input[0:2] + strings.Repeat("*", 8) + fmt.Sprintf("(%d)", inputLength)
 	}
+}
+
+// SplitHostPort splits a network address hostport of the form "host",
+// "host%zone", "[host]", "[host%zone]", "host:port", "host%zone:port",
+// "[host]:port", "[host%zone]:port", or ":port" into host or host%zone and
+// port.
+//
+// An empty host is returned if it is not provided or unparsable. A negative
+// port is returned if it is not provided or unparsable.
+func SplitHostPort(hostport string) (string, int, error) {
+	port := -1
+
+	if strings.HasPrefix(hostport, "[") {
+		addrEnd := strings.LastIndex(hostport, "]")
+		if addrEnd < 0 {
+			// Invalid hostport.
+			return "", port, errInvalidHostPort
+		}
+
+		if i := strings.LastIndex(hostport[addrEnd:], ":"); i < 0 {
+			host := hostport[1:addrEnd]
+
+			return host, port, nil
+		}
+	} else {
+		if i := strings.LastIndex(hostport, ":"); i < 0 {
+			return hostport, port, nil
+		}
+	}
+
+	host, pStr, err := net.SplitHostPort(hostport)
+	if err != nil {
+		return host, port, err
+	}
+
+	p, err := strconv.ParseUint(pStr, 10, 16)
+	if err != nil {
+		return "", port, err
+	}
+
+	return host, int(p), err
 }
 
 // returns the value or default one if value is empty.
