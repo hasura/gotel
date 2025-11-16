@@ -15,7 +15,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
@@ -78,9 +77,6 @@ const (
 	// OTELLogsExporterOTLP represents a enum that enables the logs exporter via OTLP protocol.
 	OTELLogsExporterOTLP OTELLogsExporterType = "otlp"
 )
-
-// UserVisibilityAttribute is the attribute to display on the Trace view.
-var UserVisibilityAttribute = attribute.String("internal.visibility", "user")
 
 var (
 	errInvalidOTLPCompressionType = errors.New(

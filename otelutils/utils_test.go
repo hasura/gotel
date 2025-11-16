@@ -1,4 +1,4 @@
-package gotel
+package otelutils
 
 import (
 	"net/http"

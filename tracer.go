@@ -3,6 +3,7 @@ package gotel
 import (
 	"context"
 
+	"github.com/hasura/gotel/otelutils"
 	"go.opentelemetry.io/otel"
 	traceapi "go.opentelemetry.io/otel/trace"
 )
@@ -31,7 +32,7 @@ func (t *Tracer) Start(
 	return t.Tracer.Start( //nolint:spancheck
 		ctx,
 		spanName,
-		append(opts, traceapi.WithAttributes(UserVisibilityAttribute))...)
+		append(opts, traceapi.WithAttributes(otelutils.UserVisibilityAttribute))...)
 }
 
 // StartInternal creates a span and a context.Context containing the newly-created span.
