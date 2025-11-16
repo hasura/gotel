@@ -52,10 +52,11 @@ func SetSpanHeaderAttributes(
 
 	for key, values := range headers {
 		lowerKey := strings.ToLower(key)
+
 		if (allowedHeadersLength == 0 && !excludedSpanHeaderAttributes[lowerKey]) ||
-			slices.Contains(allowedHeaders, strings.ToLower(key)) {
+			(allowedHeadersLength > 0 && slices.Contains(allowedHeaders, lowerKey)) {
 			span.SetAttributes(
-				attribute.StringSlice(fmt.Sprintf("%s.%s", prefix, strings.ToLower(key)), values),
+				attribute.StringSlice(fmt.Sprintf("%s.%s", prefix, lowerKey), values),
 			)
 		}
 	}
@@ -122,7 +123,7 @@ func MaskString(input string) string {
 }
 
 // SplitHostPort splits a network address hostport of the form "host",
-// "host%zone", "[host]", "[host%zone], "host:port", "host%zone:port",
+// "host%zone", "[host]", "[host%zone]", "host:port", "host%zone:port",
 // "[host]:port", "[host%zone]:port", or ":port" into host or host%zone and
 // port.
 //
