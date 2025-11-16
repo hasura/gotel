@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 func TestTracingMiddleware(t *testing.T) {
@@ -41,9 +42,12 @@ func TestTracingMiddleware(t *testing.T) {
 	options := []TracingMiddlewareOption{
 		AllowRequestHeaders([]string{}),
 		AllowResponseHeaders([]string{"Content-Type"}),
-		DebugPaths([]string{"/world"}),
-		DisableHighCardinalitySpans(false),
-		DisableHighCardinalityMetrics(true),
+		WithDebugPaths([]string{"/world"}),
+		WithHighCardinalitySpans(false),
+		WithHighCardinalityMetrics(true),
+		WithCustomAttributesFunc(func(r *http.Request) []attribute.KeyValue {
+			return []attribute.KeyValue{}
+		}),
 	}
 
 	mux.Handle("/hello", NewTracingMiddleware(exporters, options...)(handler))
