@@ -438,8 +438,10 @@ func parseOTLPEndpoint(
 	}
 
 	switch protocol {
-	case OTLPProtocolGRPC, OTLPProtocolHTTPProtobuf:
+	case OTLPProtocolGRPC:
 		return host, protocol, insecure, nil
+	case OTLPProtocolHTTPProtobuf:
+		return endpoint, protocol, insecure, nil
 	case "":
 		// auto detect via default OTLP port
 		if uri.Port() == otlpDefaultHTTPPort {
