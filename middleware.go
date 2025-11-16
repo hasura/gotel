@@ -150,7 +150,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 	span.SetAttributes(metricAttrs...)
 
 	if !tm.Options.HighCardinalityMetricDisabled {
-		metricAttrs = append(metricAttrs, attribute.String("http.request.path", r.URL.Path))
+		metricAttrs = append(metricAttrs, semconv.URLPath(r.URL.Path))
 	}
 
 	activeRequestsAttrSet := metric.WithAttributeSet(attribute.NewSet(metricAttrs...))
