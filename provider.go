@@ -255,6 +255,7 @@ func setupOTelTraceProvider(
 	}
 
 	options := []otlptracehttp.Option{
+		otlptracehttp.WithEndpointURL(endpoint),
 		otlptracehttp.WithCompression(otlptracehttp.Compression(compressorInt)),
 	}
 
