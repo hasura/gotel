@@ -92,8 +92,12 @@ func newLoggerProvider(
 	otelDisabled bool,
 	res *resource.Resource,
 ) (*log.LoggerProvider, error) {
-	logsEndpoint := getDefault(config.OtlpLogsEndpoint, config.OtlpEndpoint)
-	if otelDisabled || config.LogsExporter != "otlp" || logsEndpoint == "" {
+	logsEndpoint := config.OtlpLogsEndpoint
+	if logsEndpoint == "" && config.OtlpEndpoint != "" {
+		logsEndpoint = config.OtlpEndpoint + "/v1/logs"
+	}
+
+	if otelDisabled || config.LogsExporter != OTELLogsExporterOTLP || logsEndpoint == "" {
 		return log.NewLoggerProvider(), nil
 	}
 
@@ -136,7 +140,7 @@ func newLoggerProvider(
 	}
 
 	options := []otlploghttp.Option{
-		otlploghttp.WithEndpoint(endpoint),
+		otlploghttp.WithEndpointURL(endpoint),
 		otlploghttp.WithCompression(otlploghttp.Compression(compressorInt)),
 	}
 

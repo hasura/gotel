@@ -202,7 +202,10 @@ func setupOTelTraceProvider(
 	resources *resource.Resource,
 	otelDisabled bool,
 ) (*trace.TracerProvider, error) {
-	tracesEndpoint := getDefault(config.OtlpTracesEndpoint, config.OtlpEndpoint)
+	tracesEndpoint := config.OtlpTracesEndpoint
+	if tracesEndpoint == "" && config.OtlpEndpoint != "" {
+		tracesEndpoint = config.OtlpEndpoint + "/v1/traces"
+	}
 
 	if otelDisabled || tracesEndpoint == "" {
 		return trace.NewTracerProvider(trace.WithResource(resources)), nil
@@ -252,7 +255,6 @@ func setupOTelTraceProvider(
 	}
 
 	options := []otlptracehttp.Option{
-		otlptracehttp.WithEndpoint(endpoint),
 		otlptracehttp.WithCompression(otlptracehttp.Compression(compressorInt)),
 	}
 
@@ -326,7 +328,11 @@ func setupMetricExporterOTLP(
 	config *OTLPConfig,
 	metricOptions []metric.Option,
 ) ([]metric.Option, error) {
-	metricsEndpoint := getDefault(config.OtlpMetricsEndpoint, config.OtlpEndpoint)
+	metricsEndpoint := config.OtlpMetricsEndpoint
+	if metricsEndpoint == "" && config.OtlpEndpoint != "" {
+		metricsEndpoint = config.OtlpEndpoint + "/v1/metrics"
+	}
+
 	if metricsEndpoint == "" {
 		return nil, errMetricsOTLPEndpointRequired
 	}
@@ -369,7 +375,7 @@ func setupMetricExporterOTLP(
 	}
 
 	options := []otlpmetrichttp.Option{
-		otlpmetrichttp.WithEndpoint(endpoint),
+		otlpmetrichttp.WithEndpointURL(endpoint),
 		otlpmetrichttp.WithCompression(otlpmetrichttp.Compression(compressorInt)),
 	}
 	if insecure {
