@@ -26,7 +26,7 @@ func TestNewTelemetryHeaders(t *testing.T) {
 			},
 			Expected: http.Header{
 				"Content-Type":  []string{"application/json"},
-				"Authorization": []string{"Bea*******(65)"},
+				"Authorization": []string{"Be********(65)"},
 				"Api-Key":       []string{"******"},
 				"Secret-Key":    []string{"s*********"},
 			},
