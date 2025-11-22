@@ -8,25 +8,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hasura/gotel/otelutils"
 	"go.opentelemetry.io/contrib/bridges/otelslog"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploggrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp"
 	"go.opentelemetry.io/otel/sdk/log"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
-
-// contextKey is a value for use with context.WithValue. It's used as
-// a pointer so it fits in an interface{} without allocation. This technique
-// for defining context keys was copied from Go 1.7's new use of context in net/http.
-type contextKey struct {
-	name string
-}
-
-func (k *contextKey) String() string {
-	return "context value " + k.name
-}
-
-var loggerContextKey = contextKey{"LogEntry"}
 
 // LogHandler wraps slog logger with the OpenTelemetry logs exporter handler.
 type LogHandler struct {
@@ -181,7 +169,7 @@ func GetRequestLogger(r *http.Request) *slog.Logger {
 
 // NewContextWithLogger creates a new context with a logger set.
 func NewContextWithLogger(parentContext context.Context, logger *slog.Logger) context.Context {
-	return context.WithValue(parentContext, loggerContextKey, logger)
+	return context.WithValue(parentContext, otelutils.LoggerContextKey, logger)
 }
 
 // NewJSONLogger creates a JSON logger from a log level string.
@@ -201,7 +189,7 @@ func NewJSONLogger(logLevel string) (*slog.Logger, slog.Level, error) {
 }
 
 func getLogger(ctx context.Context) (*slog.Logger, bool) {
-	value := ctx.Value(loggerContextKey)
+	value := ctx.Value(otelutils.LoggerContextKey)
 	if value != nil {
 		if logger, ok := value.(*slog.Logger); ok {
 			return logger, true
