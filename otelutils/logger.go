@@ -12,4 +12,4 @@ func (k *contextKey) String() string {
 }
 
 // LoggerContextKey is the global context key constant.
-var LoggerContextKey = contextKey{"LogEntry"}
+var LoggerContextKey = &contextKey{"LogEntry"}
