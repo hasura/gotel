@@ -105,6 +105,10 @@ func NewTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) http
 
 // IsSensitiveHeader checks if the header name is sensitive.
 func IsSensitiveHeader(name string) bool {
+	if len(name) < 3 {
+		return false
+	}
+
 	lowerBytes := make([]byte, len(name))
 
 	for i := range name {

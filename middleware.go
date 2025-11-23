@@ -102,6 +102,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 	start := time.Now()
 	ctx := r.Context()
 	span := trace.SpanFromContext(ctx)
+	urlPath := strings.ToLower(r.URL.Path)
 
 	urlScheme := r.URL.Scheme
 	if urlScheme == "" {
@@ -120,7 +121,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 		semconv.ServerPort(port),
 	}
 
-	if !slices.Contains(tm.Options.DebugPaths, strings.ToLower(r.URL.Path)) {
+	if !slices.Contains(tm.Options.DebugPaths, urlPath) {
 		ctx, span = tm.Exporters.Tracer.Start(
 			otel.GetTextMapPropagator().
 				Extract(r.Context(), propagation.HeaderCarrier(r.Header)),
@@ -265,7 +266,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 
 		successLevel := slog.LevelInfo
 
-		if slices.Contains(tm.Options.DebugPaths, r.URL.Path) {
+		if slices.Contains(tm.Options.DebugPaths, urlPath) {
 			successLevel = slog.LevelDebug
 		}
 
@@ -326,7 +327,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 	responseLogAttrs = append(
 		responseLogAttrs,
 		slog.Int("size", ww.BytesWritten()),
-		otelutils.NewHeaderLogGroupAttrs("headers", requestLogHeaders),
+		otelutils.NewHeaderLogGroupAttrs("headers", responseLogHeaders),
 	)
 
 	span.SetAttributes(semconv.HTTPResponseBodySize(ww.BytesWritten()))
