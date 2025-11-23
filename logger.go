@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
-	"strings"
 
 	"github.com/hasura/gotel/otelutils"
 	"go.opentelemetry.io/contrib/bridges/otelslog"
@@ -165,27 +163,6 @@ func GetRequestLogger(r *http.Request) *slog.Logger {
 	requestID := getRequestID(r)
 
 	return logger.With(slog.String("request_id", requestID))
-}
-
-// NewContextWithLogger creates a new context with a logger set.
-func NewContextWithLogger(parentContext context.Context, logger *slog.Logger) context.Context {
-	return context.WithValue(parentContext, otelutils.LoggerContextKey, logger)
-}
-
-// NewJSONLogger creates a JSON logger from a log level string.
-func NewJSONLogger(logLevel string) (*slog.Logger, slog.Level, error) {
-	level := slog.LevelInfo
-
-	err := level.UnmarshalText([]byte(strings.ToUpper(logLevel)))
-	if err != nil {
-		return nil, level, err
-	}
-
-	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
-		Level: level,
-	}))
-
-	return logger, level, nil
 }
 
 func getLogger(ctx context.Context) (*slog.Logger, bool) {

@@ -91,13 +91,6 @@ func writeResponseJSON(w http.ResponseWriter, statusCode int, body any, logger *
 	}
 }
 
-func isContentTypeDebuggable(contentType string) bool {
-	return strings.HasPrefix(contentType, contentTypeJSON) ||
-		strings.HasPrefix(contentType, "text/") ||
-		strings.HasPrefix(contentType, "application/xml") ||
-		strings.HasPrefix(contentType, "multipart/form-data")
-}
-
 func toLowerStrings(values []string) []string {
 	results := make([]string, len(values))
 

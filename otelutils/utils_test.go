@@ -26,9 +26,9 @@ func TestNewTelemetryHeaders(t *testing.T) {
 			},
 			Expected: http.Header{
 				"Content-Type":  []string{"application/json"},
-				"Authorization": []string{"Be********(65)"},
-				"Api-Key":       []string{"******"},
-				"Secret-Key":    []string{"s*********"},
+				"Authorization": []string{MaskString},
+				"Api-Key":       []string{MaskString},
+				"Secret-Key":    []string{MaskString},
 			},
 		},
 		{
@@ -44,7 +44,7 @@ func TestNewTelemetryHeaders(t *testing.T) {
 			AllowedHeaders: []string{"Content-Type", "Api-Key"},
 			Expected: http.Header{
 				"Content-Type": []string{"application/json"},
-				"Api-Key":      []string{"******"},
+				"Api-Key":      []string{MaskString},
 			},
 		},
 	}
@@ -55,6 +55,10 @@ func TestNewTelemetryHeaders(t *testing.T) {
 
 			if !reflect.DeepEqual(tc.Expected, got) {
 				t.Errorf("expected: %v, got: %v", tc.Expected, got)
+			}
+
+			if reflect.DeepEqual(tc.Input, got) {
+				t.Errorf("input: %v, got: %v", tc.Input, got)
 			}
 		})
 	}

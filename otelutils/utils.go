@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -15,10 +14,11 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+// MaskString is the constant string for masking sensitive data.
+const MaskString = "[REDACTED]"
+
 // UserVisibilityAttribute is the attribute to display on the Trace view.
 var UserVisibilityAttribute = attribute.String("internal.visibility", "user")
-
-var sensitiveHeaderRegex = regexp.MustCompile(`auth|key|secret|token|password`)
 
 var excludedSpanHeaderAttributes = map[string]bool{
 	"baggage":           true,
@@ -31,6 +31,14 @@ var excludedSpanHeaderAttributes = map[string]bool{
 	"x-b3-parentspanid": true,
 	"x-b3-flags":        true,
 	"b3":                true,
+}
+
+var sensitiveKeywords = map[byte]string{
+	'a': "uth",
+	'k': "ey",
+	's': "ecret",
+	't': "oken",
+	'p': "assword",
 }
 
 var errInvalidHostPort = errors.New("invalid host port")
@@ -69,7 +77,7 @@ func NewTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) http
 			}
 
 			if IsSensitiveHeader(key) {
-				result.Set(strings.ToLower(key), MaskString(value))
+				result.Set(strings.ToLower(key), MaskString)
 			} else {
 				result.Set(strings.ToLower(key), value)
 			}
@@ -83,15 +91,13 @@ func NewTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) http
 			continue
 		}
 
-		values := headers
 		if IsSensitiveHeader(key) {
-			values = make([]string, len(headers))
-			for i, header := range headers {
-				values[i] = MaskString(header)
-			}
+			result[key] = []string{MaskString}
+
+			continue
 		}
 
-		result[key] = values
+		result[key] = headers
 	}
 
 	return result
@@ -99,21 +105,44 @@ func NewTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) http
 
 // IsSensitiveHeader checks if the header name is sensitive.
 func IsSensitiveHeader(name string) bool {
-	return sensitiveHeaderRegex.MatchString(strings.ToLower(name))
-}
-
-// MaskString masks the string value for security.
-func MaskString(input string) string {
-	inputLength := len(input)
-
-	switch {
-	case inputLength <= 6:
-		return strings.Repeat("*", inputLength)
-	case inputLength < 12:
-		return input[0:1] + strings.Repeat("*", inputLength-1)
-	default:
-		return input[0:2] + strings.Repeat("*", 8) + fmt.Sprintf("(%d)", inputLength)
+	if len(name) < 3 {
+		return false
 	}
+
+	lowerBytes := make([]byte, len(name))
+
+	for i := range name {
+		c := name[i]
+		if c >= 'A' && c <= 'Z' {
+			c += 'a' - 'A'
+		}
+
+		lowerBytes[i] = c
+	}
+
+	for i := range len(lowerBytes) - 2 {
+		lc := lowerBytes[i]
+
+		keyword, ok := sensitiveKeywords[lc]
+		if !ok {
+			continue
+		}
+
+		j := 0
+		keywordLength := len(keyword)
+
+		for ; j < keywordLength; j++ {
+			if lowerBytes[i+j+1] != keyword[j] {
+				break
+			}
+		}
+
+		if j == keywordLength {
+			return true
+		}
+	}
+
+	return false
 }
 
 // SplitHostPort splits a network address hostport of the form "host",
@@ -123,8 +152,15 @@ func MaskString(input string) string {
 //
 // An empty host is returned if it is not provided or unparsable. A negative
 // port is returned if it is not provided or unparsable.
-func SplitHostPort(hostport string) (string, int, error) {
+func SplitHostPort(hostport string, urlScheme string) (string, int, error) {
 	port := -1
+
+	switch urlScheme {
+	case "http":
+		port = 80
+	case "https":
+		port = 443
+	}
 
 	if strings.HasPrefix(hostport, "[") {
 		addrEnd := strings.LastIndex(hostport, "]")
@@ -149,10 +185,18 @@ func SplitHostPort(hostport string) (string, int, error) {
 		return host, port, err
 	}
 
-	p, err := strconv.ParseUint(pStr, 10, 16)
+	p, err := strconv.Atoi(pStr)
 	if err != nil {
 		return "", port, err
 	}
 
-	return host, int(p), err
+	return host, p, err
+}
+
+// IsContentTypeDebuggable checks if the content type can be debugged.
+func IsContentTypeDebuggable(contentType string) bool {
+	return strings.HasPrefix(contentType, "application/json") ||
+		strings.HasPrefix(contentType, "text/") ||
+		strings.HasPrefix(contentType, "application/xml") ||
+		strings.HasPrefix(contentType, "multipart/form-data")
 }

@@ -22,7 +22,7 @@ func TestTracingMiddleware(t *testing.T) {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}))
-	exporters := &OTelExporterResults{
+	exporters := &OTelExporters{
 		Tracer: NewTracer("test"),
 		Meter:  otel.Meter("test"),
 		Logger: logger,
