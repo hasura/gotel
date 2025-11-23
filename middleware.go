@@ -23,7 +23,7 @@ import (
 
 type tracingMiddleware struct {
 	Options                *tracingMiddlewareOptions
-	Exporters              *OTelExporterResults
+	Exporters              *OTelExporters
 	Next                   http.Handler
 	ActiveRequestsMetric   metric.Int64UpDownCounter
 	RequestBodySizeMetric  metric.Int64Histogram
@@ -33,7 +33,7 @@ type tracingMiddleware struct {
 
 // NewTracingMiddleware creates a middleware with tracing and logger.
 func NewTracingMiddleware(
-	exporters *OTelExporterResults,
+	exporters *OTelExporters,
 	options ...TracingMiddlewareOption,
 ) func(http.Handler) http.Handler {
 	tmOptions := &tracingMiddlewareOptions{

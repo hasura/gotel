@@ -113,8 +113,8 @@ type OTLPConfig struct {
 	DisableGoMetrics *bool                   `                                                                               help:"Disable internal Go and process metrics"`
 }
 
-// OTelExporterResults contains outputs of OpenTelemetry exporters.
-type OTelExporterResults struct {
+// OTelExporters contains outputs of OpenTelemetry exporters.
+type OTelExporters struct {
 	Tracer   *Tracer
 	Meter    metricapi.Meter
 	Logger   *slog.Logger
@@ -127,7 +127,7 @@ func SetupOTelExporters(
 	config *OTLPConfig,
 	serviceVersion string,
 	logger *slog.Logger,
-) (*OTelExporterResults, error) {
+) (*OTelExporters, error) {
 	otel.SetLogger(logr.FromSlogHandler(logger.Handler()))
 
 	otelDisabled := os.Getenv("OTEL_SDK_DISABLED") == "true"
@@ -181,7 +181,7 @@ func SetupOTelExporters(
 	}
 
 	otelLogger := slog.New(createLogHandler(config.ServiceName, logger, loggerProvider))
-	state := &OTelExporterResults{
+	state := &OTelExporters{
 		Tracer: &Tracer{
 			traceProvider.Tracer(config.ServiceName, traceapi.WithSchemaURL(semconv.SchemaURL)),
 		},
