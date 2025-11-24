@@ -3,7 +3,6 @@ package otelutils
 
 import (
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"slices"
@@ -51,17 +50,22 @@ func SetSpanHeaderAttributes(
 	allowedHeaders ...string,
 ) {
 	allowedHeadersLength := len(allowedHeaders)
+	maxLength := len(headers)
+
+	if allowedHeadersLength > 0 {
+		maxLength = allowedHeadersLength
+	}
+
+	attrs := make([]attribute.KeyValue, allowedHeadersLength, maxLength)
 
 	for key, values := range headers {
-		lowerKey := strings.ToLower(key)
-
-		if (allowedHeadersLength == 0 && !excludedSpanHeaderAttributes[lowerKey]) ||
-			(allowedHeadersLength > 0 && slices.Contains(allowedHeaders, lowerKey)) {
-			span.SetAttributes(
-				attribute.StringSlice(fmt.Sprintf("%s.%s", prefix, lowerKey), values),
-			)
+		if (allowedHeadersLength == 0 && !excludedSpanHeaderAttributes[key]) ||
+			(allowedHeadersLength > 0 && slices.Contains(allowedHeaders, key)) {
+			attrs = append(attrs, attribute.StringSlice(prefix+"."+key, values))
 		}
 	}
+
+	span.SetAttributes(attrs...)
 }
 
 // NewTelemetryHeaders creates a new header map with sensitive values masked.
@@ -76,10 +80,11 @@ func NewTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) http
 				continue
 			}
 
-			if IsSensitiveHeader(key) {
-				result.Set(strings.ToLower(key), MaskString)
+			lowerKey, isSensitive := EvaluateSensitiveHeader(key)
+			if isSensitive {
+				result.Set(lowerKey, MaskString)
 			} else {
-				result.Set(strings.ToLower(key), value)
+				result.Set(lowerKey, value)
 			}
 		}
 
@@ -91,24 +96,19 @@ func NewTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) http
 			continue
 		}
 
-		if IsSensitiveHeader(key) {
-			result[key] = []string{MaskString}
-
-			continue
+		lowerKey, isSensitive := EvaluateSensitiveHeader(key)
+		if isSensitive {
+			result[lowerKey] = []string{MaskString}
+		} else {
+			result[lowerKey] = headers
 		}
-
-		result[key] = headers
 	}
 
 	return result
 }
 
-// IsSensitiveHeader checks if the header name is sensitive.
-func IsSensitiveHeader(name string) bool {
-	if len(name) < 3 {
-		return false
-	}
-
+// EvaluateSensitiveHeader checks if the header name is sensitive.
+func EvaluateSensitiveHeader(name string) (string, bool) {
 	lowerBytes := make([]byte, len(name))
 
 	for i := range name {
@@ -118,6 +118,10 @@ func IsSensitiveHeader(name string) bool {
 		}
 
 		lowerBytes[i] = c
+	}
+
+	if len(name) < 3 {
+		return string(lowerBytes), false
 	}
 
 	for i := range len(lowerBytes) - 2 {
@@ -138,11 +142,11 @@ func IsSensitiveHeader(name string) bool {
 		}
 
 		if j == keywordLength {
-			return true
+			return string(lowerBytes), true
 		}
 	}
 
-	return false
+	return string(lowerBytes), false
 }
 
 // SplitHostPort splits a network address hostport of the form "host",

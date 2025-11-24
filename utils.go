@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"unicode"
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
@@ -95,7 +96,7 @@ func toLowerStrings(values []string) []string {
 	results := make([]string, len(values))
 
 	for i, item := range values {
-		results[i] = strings.ToLower(item)
+		results[i] = strings.Map(unicode.ToLower, item)
 	}
 
 	return results
