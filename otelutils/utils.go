@@ -46,7 +46,7 @@ var errInvalidHostPort = errors.New("invalid host port")
 func SetSpanHeaderAttributes(
 	span trace.Span,
 	prefix string,
-	headers http.Header,
+	headers map[string][]string,
 	allowedHeaders ...string,
 ) {
 	allowedHeadersLength := len(allowedHeaders)
@@ -69,8 +69,12 @@ func SetSpanHeaderAttributes(
 }
 
 // NewTelemetryHeaders creates a new header map with sensitive values masked.
-func NewTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) http.Header {
-	result := http.Header{}
+func NewTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) map[string][]string {
+	if len(httpHeaders) == 0 {
+		return httpHeaders
+	}
+
+	result := map[string][]string{}
 
 	if len(allowedHeaders) > 0 {
 		for _, key := range allowedHeaders {
@@ -82,9 +86,9 @@ func NewTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) http
 
 			lowerKey, isSensitive := EvaluateSensitiveHeader(key)
 			if isSensitive {
-				result.Set(lowerKey, MaskString)
+				result[lowerKey] = []string{MaskString}
 			} else {
-				result.Set(lowerKey, value)
+				result[lowerKey] = []string{value}
 			}
 		}
 
