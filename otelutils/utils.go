@@ -52,11 +52,11 @@ func SetSpanHeaderAttributes(
 	allowedHeadersLength := len(allowedHeaders)
 	maxLength := len(headers)
 
-	if allowedHeadersLength > 0 {
+	if allowedHeadersLength > 0 && allowedHeadersLength < maxLength {
 		maxLength = allowedHeadersLength
 	}
 
-	attrs := make([]attribute.KeyValue, allowedHeadersLength, maxLength)
+	attrs := make([]attribute.KeyValue, 0, maxLength)
 
 	for key, values := range headers {
 		if (allowedHeadersLength == 0 && !excludedSpanHeaderAttributes[key]) ||
