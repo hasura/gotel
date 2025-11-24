@@ -70,11 +70,11 @@ func SetSpanHeaderAttributes(
 
 // NewTelemetryHeaders creates a new header map with sensitive values masked.
 func NewTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) map[string][]string {
-	if len(httpHeaders) == 0 {
-		return httpHeaders
-	}
-
 	result := map[string][]string{}
+
+	if len(httpHeaders) == 0 {
+		return result
+	}
 
 	if len(allowedHeaders) > 0 {
 		for _, key := range allowedHeaders {
