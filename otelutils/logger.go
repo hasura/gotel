@@ -31,7 +31,7 @@ func NewContextWithLogger(parentContext context.Context, logger *slog.Logger) co
 func NewJSONLogger(logLevel string) (*slog.Logger, slog.Level, error) {
 	level := slog.LevelInfo
 
-	err := level.UnmarshalText([]byte(strings.ToUpper(logLevel)))
+	err := level.UnmarshalText([]byte(logLevel))
 	if err != nil {
 		return nil, level, err
 	}

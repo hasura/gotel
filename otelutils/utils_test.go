@@ -11,7 +11,7 @@ func TestNewTelemetryHeaders(t *testing.T) {
 		Name           string
 		Input          http.Header
 		AllowedHeaders []string
-		Expected       http.Header
+		Expected       map[string][]string
 	}{
 		{
 			Name: "basic",
@@ -24,11 +24,11 @@ func TestNewTelemetryHeaders(t *testing.T) {
 				"Secret-Key": []string{"secret-key"},
 				"X-Empty":    []string{},
 			},
-			Expected: http.Header{
-				"Content-Type":  []string{"application/json"},
-				"Authorization": []string{MaskString},
-				"Api-Key":       []string{MaskString},
-				"Secret-Key":    []string{MaskString},
+			Expected: map[string][]string{
+				"content-type":  {"application/json"},
+				"authorization": {MaskString},
+				"api-key":       {MaskString},
+				"secret-key":    {MaskString},
 			},
 		},
 		{
@@ -42,9 +42,9 @@ func TestNewTelemetryHeaders(t *testing.T) {
 				"Secret-Key": []string{"secret-key"},
 			},
 			AllowedHeaders: []string{"Content-Type", "Api-Key"},
-			Expected: http.Header{
-				"Content-Type": []string{"application/json"},
-				"Api-Key":      []string{MaskString},
+			Expected: map[string][]string{
+				"content-type": {"application/json"},
+				"api-key":      {MaskString},
 			},
 		},
 	}
