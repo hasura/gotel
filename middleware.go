@@ -50,6 +50,22 @@ func NewTracingMiddleware(
 		"http.server.request.duration",
 		metric.WithDescription("Duration of HTTP server requests"),
 		metric.WithUnit("s"),
+		metric.WithExplicitBucketBoundaries(
+			0.005,
+			0.01,
+			0.025,
+			0.05,
+			0.075,
+			0.1,
+			0.25,
+			0.5,
+			0.75,
+			1,
+			2.5,
+			5,
+			7.5,
+			10,
+		),
 	)
 	if err != nil {
 		panic(fmt.Errorf("failed to create http.server.request.duration metric: %w", err))
@@ -133,8 +149,10 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 	}
 
 	requestID := getRequestID(r)
-	logger := tm.Exporters.Logger.With(slog.String("request_id", requestID))
-	httpLogger := logger.With(slog.String("type", "http-log"))
+	logger := tm.Exporters.Logger.With(
+		slog.String("request_id", requestID),
+		slog.String("type", "http-log"),
+	)
 	isDebug := logger.Enabled(ctx, slog.LevelDebug)
 
 	if tm.Options.CustomAttributesFunc != nil {
@@ -253,7 +271,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 
 		if statusCode >= http.StatusBadRequest {
 			span.SetStatus(codes.Error, description)
-			httpLogger.LogAttrs(ctx, slog.LevelError, description, logAttrs...)
+			logger.LogAttrs(ctx, slog.LevelError, description, logAttrs...)
 
 			return
 		}
@@ -273,7 +291,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 		logger.LogAttrs(ctx, successLevel, http.StatusText(statusCode), logAttrs...)
 	}
 
-	if isDebug && r.Body != nil &&
+	if isDebug && r.Body != nil && r.Body != http.NoBody &&
 		otelutils.IsContentTypeDebuggable(r.Header.Get(contentTypeHeader)) {
 		bodyStr, err := debugRequestBody(ww, r, logger)
 		if err != nil {
