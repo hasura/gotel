@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/caarlos0/env/v11"
 	"github.com/hasura/gotel"
@@ -40,7 +39,9 @@ func main() {
 	defer ts.Shutdown(context.TODO())
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		time.Sleep(5 * time.Second)
+		_, span := ts.Tracer.Start(r.Context(), "hello")
+		defer span.End()
+
 		w.Write([]byte(fmt.Sprintf("%s %s", r.Method, r.URL.Path)))
 	})
 
