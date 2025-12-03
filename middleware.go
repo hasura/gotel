@@ -334,7 +334,9 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 		}
 	}()
 
-	rr := r.WithContext(otelutils.NewContextWithLogger(ctx, logger))
+	rr := r.WithContext(otelutils.NewContextWithLogger(ctx, tm.Exporters.Logger.With(
+		slog.String("request_id", requestID),
+	)))
 
 	tm.Next.ServeHTTP(ww, rr)
 
