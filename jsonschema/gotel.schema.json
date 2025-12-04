@@ -27,19 +27,19 @@
     },
     "otlpInsecure": {
      "type": "boolean",
-     "description": "Disable LTS for OpenTelemetry exporters."
+     "description": "Disable TLS for OpenTelemetry exporters."
     },
     "otlpTracesInsecure": {
      "type": "boolean",
-     "description": "Disable LTS for OpenTelemetry traces exporter."
+     "description": "Disable TLS for OpenTelemetry traces exporter."
     },
     "otlpMetricsInsecure": {
      "type": "boolean",
-     "description": "Disable LTS for OpenTelemetry metrics exporter."
+     "description": "Disable TLS for OpenTelemetry metrics exporter."
     },
     "otlpLogsInsecure": {
      "type": "boolean",
-     "description": "Disable LTS for OpenTelemetry logs exporter."
+     "description": "Disable TLS for OpenTelemetry logs exporter."
     },
     "otlpProtocol": {
      "type": "string",
