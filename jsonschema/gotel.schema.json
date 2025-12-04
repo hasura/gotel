@@ -1,0 +1,141 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "https://github.com/hasura/gotel/otlp-config",
+ "$ref": "#/$defs/OTLPConfig",
+ "$defs": {
+  "OTLPConfig": {
+   "properties": {
+    "serviceName": {
+     "type": "string",
+     "description": "OpenTelemetry service name."
+    },
+    "otlpEndpoint": {
+     "type": "string",
+     "description": "OTLP receiver endpoint that is set as default for all types."
+    },
+    "otlpTracesEndpoint": {
+     "type": "string",
+     "description": "OTLP receiver endpoint for traces exporter."
+    },
+    "otlpMetricsEndpoint": {
+     "type": "string",
+     "description": "OTLP receiver endpoint for metrics exporter."
+    },
+    "otlpLogsEndpoint": {
+     "type": "string",
+     "description": "OTLP receiver endpoint for logs exporter."
+    },
+    "otlpInsecure": {
+     "type": "boolean",
+     "description": "Disable LTS for OpenTelemetry exporters."
+    },
+    "otlpTracesInsecure": {
+     "type": "boolean",
+     "description": "Disable LTS for OpenTelemetry traces exporter."
+    },
+    "otlpMetricsInsecure": {
+     "type": "boolean",
+     "description": "Disable LTS for OpenTelemetry metrics exporter."
+    },
+    "otlpLogsInsecure": {
+     "type": "boolean",
+     "description": "Disable LTS for OpenTelemetry logs exporter."
+    },
+    "otlpProtocol": {
+     "type": "string",
+     "enum": [
+      "grpc",
+      "http/protobuf"
+     ],
+     "description": "OTLP receiver protocol for all types."
+    },
+    "otlpTracesProtocol": {
+     "type": "string",
+     "enum": [
+      "grpc",
+      "http/protobuf"
+     ],
+     "description": "OTLP receiver protocol for traces."
+    },
+    "otlpMetricsProtocol": {
+     "type": "string",
+     "enum": [
+      "grpc",
+      "http/protobuf"
+     ],
+     "description": "OTLP receiver protocol for metrics."
+    },
+    "otlpLogsProtocol": {
+     "type": "string",
+     "enum": [
+      "grpc",
+      "http/protobuf"
+     ],
+     "description": "OTLP receiver protocol for logs."
+    },
+    "otlpCompression": {
+     "type": "string",
+     "enum": [
+      "none",
+      "gzip"
+     ],
+     "description": "Enable compression for OTLP exporters. Accept: none, gzip"
+    },
+    "otlpTraceCompression": {
+     "type": "string",
+     "enum": [
+      "none",
+      "gzip"
+     ],
+     "description": "Enable compression for OTLP traces exporter. Accept: none, gzip"
+    },
+    "otlpMetricsCompression": {
+     "type": "string",
+     "enum": [
+      "none",
+      "gzip"
+     ],
+     "description": "Enable compression for OTLP metrics exporter. Accept: none, gzip"
+    },
+    "otlpLogsCompression": {
+     "type": "string",
+     "enum": [
+      "none",
+      "gzip"
+     ],
+     "description": "Enable compression for OTLP logs exporter. Accept: none, gzip"
+    },
+    "metricsExporter": {
+     "type": "string",
+     "enum": [
+      "none",
+      "otlp",
+      "prometheus"
+     ],
+     "description": "Metrics export type. Accept: none, otlp, prometheus"
+    },
+    "logsExporter": {
+     "type": "string",
+     "enum": [
+      "none",
+      "otlp"
+     ],
+     "description": "Logs export type. Accept: none, otlp"
+    },
+    "prometheusPort": {
+     "type": "integer",
+     "maximum": 65535,
+     "minimum": 1000,
+     "description": "Prometheus port for the Prometheus HTTP server. Use /metrics endpoint of the connector server if empty."
+    },
+    "disableGoMetrics": {
+     "type": "boolean",
+     "description": "Disable internal Go and process metrics (prometheus exporter only)."
+    }
+   },
+   "additionalProperties": false,
+   "type": "object",
+   "description": "OTLPConfig contains configuration for OpenTelemetry exporter."
+  }
+ }
+}
