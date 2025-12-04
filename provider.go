@@ -89,28 +89,48 @@ var (
 
 // OTLPConfig contains configuration for OpenTelemetry exporter.
 type OTLPConfig struct {
-	ServiceName            string              `env:"OTEL_SERVICE_NAME"                      help:"OpenTelemetry service name."`
-	OtlpEndpoint           string              `env:"OTEL_EXPORTER_OTLP_ENDPOINT"            help:"OpenTelemetry receiver endpoint that is set as default for all types."`
-	OtlpTracesEndpoint     string              `env:"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"     help:"OpenTelemetry endpoint for traces."`
-	OtlpMetricsEndpoint    string              `env:"OTEL_EXPORTER_OTLP_METRICS_ENDPOINT"    help:"OpenTelemetry endpoint for metrics."`
-	OtlpLogsEndpoint       string              `env:"OTEL_EXPORTER_OTLP_LOGS_ENDPOINT"       help:"OpenTelemetry endpoint for logs."`
-	OtlpInsecure           *bool               `env:"OTEL_EXPORTER_OTLP_INSECURE"            help:"Disable LTS for OpenTelemetry exporters."`
-	OtlpTracesInsecure     *bool               `env:"OTEL_EXPORTER_OTLP_TRACES_INSECURE"     help:"Disable LTS for OpenTelemetry traces exporter."`
-	OtlpMetricsInsecure    *bool               `env:"OTEL_EXPORTER_OTLP_METRICS_INSECURE"    help:"Disable LTS for OpenTelemetry metrics exporter."`
-	OtlpLogsInsecure       *bool               `env:"OTEL_EXPORTER_OTLP_LOGS_INSECURE"       help:"Disable LTS for OpenTelemetry logs exporter."`
-	OtlpProtocol           OTLPProtocol        `env:"OTEL_EXPORTER_OTLP_PROTOCOL"            help:"OpenTelemetry receiver protocol for all types."`
-	OtlpTracesProtocol     OTLPProtocol        `env:"OTEL_EXPORTER_OTLP_TRACES_PROTOCOL"     help:"OpenTelemetry receiver protocol for traces."`
-	OtlpMetricsProtocol    OTLPProtocol        `env:"OTEL_EXPORTER_OTLP_METRICS_PROTOCOL"    help:"OpenTelemetry receiver protocol for metrics."`
-	OtlpLogsProtocol       OTLPProtocol        `env:"OTEL_EXPORTER_OTLP_LOGS_PROTOCOL"       help:"OpenTelemetry receiver protocol for logs."`
-	OtlpCompression        OTLPCompressionType `env:"OTEL_EXPORTER_OTLP_COMPRESSION"         help:"Enable compression for OTLP exporters. Accept: none, gzip"             default:"gzip" enum:"none,gzip"`
-	OtlpTraceCompression   OTLPCompressionType `env:"OTEL_EXPORTER_OTLP_TRACES_COMPRESSION"  help:"Enable compression for OTLP traces exporter. Accept: none, gzip"       default:"gzip" enum:"none,gzip"`
-	OtlpMetricsCompression OTLPCompressionType `env:"OTEL_EXPORTER_OTLP_METRICS_COMPRESSION" help:"Enable compression for OTLP metrics exporter. Accept: none, gzip"      default:"gzip" enum:"none,gzip"`
-	OtlpLogsCompression    OTLPCompressionType `env:"OTEL_EXPORTER_OTLP_LOGS_COMPRESSION"    help:"Enable compression for OTLP logs exporter. Accept: none, gzip"         default:"gzip" enum:"none,gzip"`
-
-	MetricsExporter  OTELMetricsExporterType `default:"none" enum:"none,otlp,prometheus" env:"OTEL_METRICS_EXPORTER"         help:"Metrics export type. Accept: none, otlp, prometheus"`
-	LogsExporter     OTELLogsExporterType    `default:"none" enum:"none,otlp"            env:"OTEL_LOGS_EXPORTER"            help:"Logs export type. Accept: none, otlp"`
-	PrometheusPort   *uint                   `                                           env:"OTEL_EXPORTER_PROMETHEUS_PORT" help:"Prometheus port for the Prometheus HTTP server. Use /metrics endpoint of the connector server if empty"`
-	DisableGoMetrics *bool                   `                                                                               help:"Disable internal Go and process metrics"`
+	// OpenTelemetry service name.
+	ServiceName string `json:"serviceName,omitempty" yaml:"serviceName,omitempty" env:"OTEL_SERVICE_NAME" help:"OpenTelemetry service name."`
+	// OTLP receiver endpoint that is set as default for all types.
+	OtlpEndpoint string `json:"otlpEndpoint,omitempty" yaml:"otlpEndpoint,omitempty" env:"OTEL_EXPORTER_OTLP_ENDPOINT" help:"OTLP receiver endpoint that is set as default for all types."`
+	// OTLP receiver endpoint for traces exporter.
+	OtlpTracesEndpoint string `json:"otlpTracesEndpoint,omitempty" yaml:"otlpTracesEndpoint,omitempty" env:"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT" help:"OTLP receiver endpoint for traces."`
+	// OTLP receiver endpoint for metrics exporter.
+	OtlpMetricsEndpoint string `json:"otlpMetricsEndpoint,omitempty" yaml:"otlpMetricsEndpoint,omitempty" env:"OTEL_EXPORTER_OTLP_METRICS_ENDPOINT" help:"OTLP receiver endpoint for metrics."`
+	// OTLP receiver endpoint for logs exporter.
+	OtlpLogsEndpoint string `json:"otlpLogsEndpoint,omitempty" yaml:"otlpLogsEndpoint,omitempty" env:"OTEL_EXPORTER_OTLP_LOGS_ENDPOINT" help:"OTLP receiver endpoint for logs."`
+	// Disable TLS for OpenTelemetry exporters.
+	OtlpInsecure *bool `json:"otlpInsecure,omitempty" yaml:"otlpInsecure,omitempty" env:"OTEL_EXPORTER_OTLP_INSECURE" help:"Disable TLS for OpenTelemetry exporters."`
+	// Disable TLS for OpenTelemetry traces exporter.
+	OtlpTracesInsecure *bool `json:"otlpTracesInsecure,omitempty" yaml:"otlpTracesInsecure,omitempty" env:"OTEL_EXPORTER_OTLP_TRACES_INSECURE" help:"Disable TLS for OpenTelemetry traces exporter."`
+	// Disable TLS for OpenTelemetry metrics exporter.
+	OtlpMetricsInsecure *bool `json:"otlpMetricsInsecure,omitempty" yaml:"otlpMetricsInsecure,omitempty" env:"OTEL_EXPORTER_OTLP_METRICS_INSECURE" help:"Disable TLS for OpenTelemetry metrics exporter."`
+	// Disable TLS for OpenTelemetry logs exporter.
+	OtlpLogsInsecure *bool `json:"otlpLogsInsecure,omitempty" yaml:"otlpLogsInsecure,omitempty" env:"OTEL_EXPORTER_OTLP_LOGS_INSECURE" help:"Disable TLS for OpenTelemetry logs exporter."`
+	// OTLP receiver protocol for all types.
+	OtlpProtocol OTLPProtocol `json:"otlpProtocol,omitempty" yaml:"otlpProtocol,omitempty" env:"OTEL_EXPORTER_OTLP_PROTOCOL" enum:"grpc,http/protobuf" jsonschema:"enum=grpc,enum=http/protobuf" help:"OTLP receiver protocol for all types."`
+	// OTLP receiver protocol for traces.
+	OtlpTracesProtocol OTLPProtocol `json:"otlpTracesProtocol,omitempty" yaml:"otlpTracesProtocol,omitempty" env:"OTEL_EXPORTER_OTLP_TRACES_PROTOCOL" enum:"grpc,http/protobuf" jsonschema:"enum=grpc,enum=http/protobuf" help:"OTLP receiver protocol for traces."`
+	// OTLP receiver protocol for metrics.
+	OtlpMetricsProtocol OTLPProtocol `json:"otlpMetricsProtocol,omitempty" yaml:"otlpMetricsProtocol,omitempty" env:"OTEL_EXPORTER_OTLP_METRICS_PROTOCOL" enum:"grpc,http/protobuf" jsonschema:"enum=grpc,enum=http/protobuf" help:"OTLP receiver protocol for metrics."`
+	// OTLP receiver protocol for logs.
+	OtlpLogsProtocol OTLPProtocol `json:"otlpLogsProtocol,omitempty" yaml:"otlpLogsProtocol,omitempty" env:"OTEL_EXPORTER_OTLP_LOGS_PROTOCOL" enum:"grpc,http/protobuf" jsonschema:"enum=grpc,enum=http/protobuf" help:"OTLP receiver protocol for logs."`
+	// Enable compression for OTLP exporters. Accept: none, gzip
+	OtlpCompression OTLPCompressionType `json:"otlpCompression,omitempty" yaml:"otlpCompression,omitempty" env:"OTEL_EXPORTER_OTLP_COMPRESSION" default:"gzip" enum:"none,gzip" jsonschema:"enum=none,enum=gzip" help:"Enable compression for OTLP exporters. Accept: none, gzip"`
+	// Enable compression for OTLP traces exporter. Accept: none, gzip
+	OtlpTraceCompression OTLPCompressionType `json:"otlpTraceCompression,omitempty" yaml:"otlpTraceCompression,omitempty" env:"OTEL_EXPORTER_OTLP_TRACES_COMPRESSION" default:"gzip" enum:"none,gzip" jsonschema:"enum=none,enum=gzip" help:"Enable compression for OTLP traces exporter. Accept: none, gzip"`
+	// Enable compression for OTLP metrics exporter. Accept: none, gzip
+	OtlpMetricsCompression OTLPCompressionType `json:"otlpMetricsCompression,omitempty" yaml:"otlpMetricsCompression,omitempty" env:"OTEL_EXPORTER_OTLP_METRICS_COMPRESSION" default:"gzip" enum:"none,gzip" jsonschema:"enum=none,enum=gzip" help:"Enable compression for OTLP metrics exporter. Accept: none, gzip"`
+	// Enable compression for OTLP logs exporter. Accept: none, gzip
+	OtlpLogsCompression OTLPCompressionType `json:"otlpLogsCompression,omitempty" yaml:"otlpLogsCompression,omitempty" env:"OTEL_EXPORTER_OTLP_LOGS_COMPRESSION" default:"gzip" enum:"none,gzip" jsonschema:"enum=none,enum=gzip" help:"Enable compression for OTLP logs exporter. Accept: none, gzip"`
+	// Metrics export type. Accept: none, otlp, prometheus
+	MetricsExporter OTELMetricsExporterType `json:"metricsExporter,omitempty" yaml:"metricsExporter,omitempty" env:"OTEL_METRICS_EXPORTER" default:"none" enum:"none,otlp,prometheus" jsonschema:"enum=none,enum=otlp,enum=prometheus" help:"Metrics export type. Accept: none, otlp, prometheus"`
+	// Logs export type. Accept: none, otlp
+	LogsExporter OTELLogsExporterType `json:"logsExporter,omitempty" yaml:"logsExporter,omitempty" env:"OTEL_LOGS_EXPORTER" default:"none" enum:"none,otlp" jsonschema:"enum=none,enum=otlp" help:"Logs export type. Accept: none, otlp"`
+	// Prometheus port for the Prometheus HTTP server. Use /metrics endpoint of the connector server if empty.
+	PrometheusPort *uint `json:"prometheusPort,omitempty" yaml:"prometheusPort,omitempty" env:"OTEL_EXPORTER_PROMETHEUS_PORT" jsonschema:"minimum=1000,maximum=65535" help:"Prometheus port for the Prometheus HTTP server. Use /metrics endpoint of the connector server if empty"`
+	// Disable internal Go and process metrics (prometheus exporter only).
+	DisableGoMetrics *bool `json:"disableGoMetrics,omitempty" yaml:"disableGoMetrics,omitempty" help:"Disable internal Go and process metrics"`
 }
 
 // OTelExporters contains outputs of OpenTelemetry exporters.
