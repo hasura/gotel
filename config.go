@@ -186,5 +186,5 @@ func (oc OTLPConfig) GetLogsExporter() OTELLogsExporterType {
 		return OTELLogsExporterNone
 	}
 
-	return OTELLogsExporterOTLP
+	return oc.LogsExporter
 }
