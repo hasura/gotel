@@ -8,7 +8,7 @@ type OTLPCompressionType string
 const (
 	// OTLPCompressionNone is the enum that disables compression.
 	OTLPCompressionNone OTLPCompressionType = "none"
-	// OTLPCompressionGzip is the enum that enable compression of gzip algorithm.
+	// OTLPCompressionGzip is the enum that enables the gzip compression algorithm.
 	OTLPCompressionGzip OTLPCompressionType = "gzip"
 )
 
@@ -26,11 +26,11 @@ const (
 type OTELMetricsExporterType string
 
 const (
-	// OTELMetricsExporterNone represents a enum that disables the metrics exporter.
+	// OTELMetricsExporterNone represents an enum that disables the metrics exporter.
 	OTELMetricsExporterNone OTELMetricsExporterType = "none"
-	// OTELMetricsExporterOTLP represents a enum that enables the metrics exporter via OTLP protocol.
+	// OTELMetricsExporterOTLP represents an enum that enables the metrics exporter via OTLP protocol.
 	OTELMetricsExporterOTLP OTELMetricsExporterType = "otlp"
-	// OTELMetricsExporterPrometheus represents a enum that enables the metrics exporter via Prometheus.
+	// OTELMetricsExporterPrometheus represents an enum that enables the metrics exporter via Prometheus.
 	OTELMetricsExporterPrometheus OTELMetricsExporterType = "prometheus"
 )
 
@@ -38,9 +38,9 @@ const (
 type OTELLogsExporterType string
 
 const (
-	// OTELLogsExporterNone represents a enum that disables the logs exporter.
+	// OTELLogsExporterNone represents an enum that disables the logs exporter.
 	OTELLogsExporterNone OTELLogsExporterType = "none"
-	// OTELLogsExporterOTLP represents a enum that enables the logs exporter via OTLP protocol.
+	// OTELLogsExporterOTLP represents an enum that enables the logs exporter via OTLP protocol.
 	OTELLogsExporterOTLP OTELLogsExporterType = "otlp"
 )
 
