@@ -47,7 +47,7 @@
       "grpc",
       "http/protobuf"
      ],
-     "description": "OTLP receiver protocol for all types."
+     "description": "OTLP receiver protocol for all exporters. Default is grpc."
     },
     "otlpTracesProtocol": {
      "type": "string",
@@ -81,7 +81,7 @@
      ],
      "description": "Enable compression for OTLP exporters. Accept: none, gzip"
     },
-    "otlpTraceCompression": {
+    "otlpTracesCompression": {
      "type": "string",
      "enum": [
       "none",

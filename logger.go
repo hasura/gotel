@@ -89,7 +89,7 @@ func newLoggerProvider(
 
 	endpoint, protocol, insecure, err := parseOTLPEndpoint(
 		logsEndpoint,
-		getDefault(config.OtlpLogsProtocol, config.OtlpProtocol),
+		config.GetOTLPLogsProtocol(),
 		getDefaultPtr(config.OtlpLogsInsecure, config.OtlpInsecure),
 	)
 	if err != nil {
@@ -97,7 +97,7 @@ func newLoggerProvider(
 	}
 
 	compressorStr, compressorInt, err := parseOTLPCompression(
-		getDefault(config.OtlpLogsCompression, config.OtlpCompression),
+		config.GetOTLPLogsCompression(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse OTLP logs compression: %w", err)
