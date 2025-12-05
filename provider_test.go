@@ -211,66 +211,6 @@ func TestParseOTLPCompression(t *testing.T) {
 	}
 }
 
-func TestParseOTELMetricsExporterType(t *testing.T) {
-	testCases := []struct {
-		Name        string
-		Input       OTELMetricsExporterType
-		Expected    OTELMetricsExporterType
-		ExpectError bool
-	}{
-		{
-			Name:        "none exporter",
-			Input:       OTELMetricsExporterNone,
-			Expected:    OTELMetricsExporterNone,
-			ExpectError: false,
-		},
-		{
-			Name:        "otlp exporter",
-			Input:       OTELMetricsExporterOTLP,
-			Expected:    OTELMetricsExporterOTLP,
-			ExpectError: false,
-		},
-		{
-			Name:        "prometheus exporter",
-			Input:       OTELMetricsExporterPrometheus,
-			Expected:    OTELMetricsExporterPrometheus,
-			ExpectError: false,
-		},
-		{
-			Name:        "empty defaults to none",
-			Input:       "",
-			Expected:    OTELMetricsExporterNone,
-			ExpectError: false,
-		},
-		{
-			Name:        "invalid exporter type",
-			Input:       "invalid",
-			ExpectError: true,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.Name, func(t *testing.T) {
-			result, err := parseOTELMetricsExporterType(tc.Input)
-
-			if tc.ExpectError {
-				if err == nil {
-					t.Error("expected error but got none")
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-
-			if result != tc.Expected {
-				t.Errorf("expected '%s', got '%s'", tc.Expected, result)
-			}
-		})
-	}
-}
-
 func TestNewResource(t *testing.T) {
 	t.Run("creates resource with service name and version", func(t *testing.T) {
 		serviceName := "test-service"

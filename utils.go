@@ -17,17 +17,6 @@ const (
 	contentTypeHeader = "Content-Type"
 )
 
-// returns the value or default one if value is empty.
-func getDefault[T comparable](value T, defaultValue T) T {
-	var empty T
-
-	if value == empty {
-		return defaultValue
-	}
-
-	return value
-}
-
 // returns the first pointer or default one if GetDefaultPtr is nil.
 func getDefaultPtr[T any](value *T, defaultValue *T) *T {
 	if value == nil {

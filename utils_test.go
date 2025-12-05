@@ -12,34 +12,6 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func TestGetDefault(t *testing.T) {
-	t.Run("returns value when not empty", func(t *testing.T) {
-		result := getDefault("value", "default")
-		if result != "value" {
-			t.Errorf("expected 'value', got '%s'", result)
-		}
-	})
-
-	t.Run("returns default when value is empty", func(t *testing.T) {
-		result := getDefault("", "default")
-		if result != "default" {
-			t.Errorf("expected 'default', got '%s'", result)
-		}
-	})
-
-	t.Run("works with integers", func(t *testing.T) {
-		result := getDefault(0, 42)
-		if result != 42 {
-			t.Errorf("expected 42, got %d", result)
-		}
-
-		result = getDefault(10, 42)
-		if result != 10 {
-			t.Errorf("expected 10, got %d", result)
-		}
-	})
-}
-
 func TestGetDefaultPtr(t *testing.T) {
 	t.Run("returns value when not nil", func(t *testing.T) {
 		value := "test"
