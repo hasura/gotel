@@ -3,8 +3,8 @@ module github.com/hasura/gotel/example
 go 1.26
 
 require (
-	github.com/caarlos0/env/v11 v11.3.1
-	github.com/hasura/gotel v0.1.0
+	github.com/caarlos0/env/v11 v11.4.0
+	github.com/hasura/gotel v0.6.2
 )
 
 require (
