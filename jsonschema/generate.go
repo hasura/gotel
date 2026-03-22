@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/hasura/gotel"
-	"github.com/invopop/jsonschema"
+	"github.com/relychan/jsonschema"
 )
 
 func main() {
