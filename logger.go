@@ -164,7 +164,8 @@ func GetRequestLogger(r *http.Request) *slog.Logger {
 	return logger.With(slog.String("request_id", requestID))
 }
 
-// GetOrCreateLogger get the.
+// GetOrCreateLogger returns an existing logger from the context or creates a new one.
+// The returned bool is true if the logger was found in the context.
 func GetOrCreateLogger(ctx context.Context, name string) (*slog.Logger, bool) {
 	value := ctx.Value(otelutils.LoggerContextKey)
 	if value != nil {
