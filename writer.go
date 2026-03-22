@@ -63,6 +63,10 @@ func (b *basicWriter) WriteHeader(code int) {
 }
 
 func (b *basicWriter) Write(buf []byte) (int, error) {
+	if len(buf) == 0 {
+		return 0, nil
+	}
+
 	b.maybeWriteHeader()
 
 	var (
