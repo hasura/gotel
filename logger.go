@@ -31,11 +31,10 @@ func createLogHandler(
 	}
 
 	otelHandler := otelslog.NewHandler(serviceName, options...)
-	loggerHandler := logger.Handler()
 
 	return LogHandler{
 		otelHandler: otelHandler,
-		stdHandler:  loggerHandler,
+		stdHandler:  logger.Handler(),
 	}
 }
 
@@ -165,7 +164,8 @@ func GetRequestLogger(r *http.Request) *slog.Logger {
 	return logger.With(slog.String("request_id", requestID))
 }
 
-func getLogger(ctx context.Context) (*slog.Logger, bool) {
+// GetOrCreateLogger get the.
+func GetOrCreateLogger(ctx context.Context, name string) (*slog.Logger, bool) {
 	value := ctx.Value(otelutils.LoggerContextKey)
 	if value != nil {
 		if logger, ok := value.(*slog.Logger); ok {
@@ -173,5 +173,9 @@ func getLogger(ctx context.Context) (*slog.Logger, bool) {
 		}
 	}
 
-	return slog.New(createLogHandler("hasura-ndc-go", slog.Default(), nil)), false
+	return slog.New(createLogHandler(name, slog.Default(), nil)), false
+}
+
+func getLogger(ctx context.Context) (*slog.Logger, bool) {
+	return GetOrCreateLogger(ctx, "hasura-ndc-go")
 }
