@@ -53,7 +53,7 @@ func (b *basicWriter) WriteHeader(code int) {
 			b.ResponseWriter.WriteHeader(code)
 		}
 	} else if !b.wroteHeader {
-		b.code = int16(code)
+		b.code = int16(code) //nolint:gosec
 
 		b.wroteHeader = true
 		if !b.discard {
