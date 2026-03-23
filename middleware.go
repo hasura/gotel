@@ -195,24 +195,16 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 	}
 
 	requestBodySize := r.ContentLength
-	requestLogHeaders := otelutils.NewTelemetryHeaders(
+	requestLogHeaders := otelutils.ExtractTelemetryHeaders(
 		r.Header,
 		tm.Options.AllowedRequestHeaders...)
 
-	requestLogAttrs := make([]slog.Attr, 0, 6)
-	requestLogAttrs = append(
-		requestLogAttrs,
-		slog.String("url", r.URL.String()),
-		slog.String("method", r.Method),
-		slog.String("remote_address", r.RemoteAddr),
-		otelutils.NewHeaderLogGroupAttrs("headers", requestLogHeaders),
-	)
-
-	otelutils.SetSpanHeaderAttributes(span, "http.request.header", requestLogHeaders)
+	otelutils.SetSpanHeaderMatrixAttributes(span, "http.request.header", requestLogHeaders)
 
 	var (
 		ww             WrapResponseWriter
 		responseReader *bytes.Buffer
+		bodyStr        string
 	)
 
 	if tm.Options.ResponseWriterWrapperFunc != nil {
@@ -228,9 +220,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 		ww.Tee(responseReader)
 	}
 
-	responseLogAttrs := make([]slog.Attr, 0, 4)
-
-	traceResponse := func(statusCode int, description string, err any) {
+	traceResponse := func(statusCode int, err any) {
 		tm.ActiveRequestsMetric.Add(
 			ctx,
 			-1,
@@ -242,45 +232,26 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 
 		latency := time.Since(start).Seconds()
 
-		responseLogAttrs = append(responseLogAttrs, slog.Int("status", statusCode))
 		metricAttrs = append(metricAttrs, statusCodeAttr)
 		metricAttrSet := metric.WithAttributeSet(attribute.NewSet(metricAttrs...))
 
 		if requestBodySize > 0 {
-			requestLogAttrs = append(requestLogAttrs, slog.Int64("size", requestBodySize))
 			tm.RequestBodySizeMetric.Record(ctx, requestBodySize, metricAttrSet)
 		}
 
-		logAttrs := []slog.Attr{
-			slog.Float64("latency", latency),
-			slog.GroupAttrs("request", requestLogAttrs...),
-			slog.GroupAttrs("response", responseLogAttrs...),
-		}
+		bytesWritten := ww.BytesWritten()
+		responseLogHeaders := otelutils.ExtractTelemetryHeaders(
+			ww.Header(),
+			tm.Options.AllowedResponseHeaders...)
 
-		if err != nil {
-			stack := string(debug.Stack())
-			logAttrs = append(logAttrs, slog.Any("error", err), slog.String("stacktrace", stack))
-			span.SetAttributes(semconv.ExceptionStacktrace(stack))
-		}
+		span.SetAttributes(semconv.HTTPResponseBodySizeKey.Int64(bytesWritten))
+		otelutils.SetSpanHeaderMatrixAttributes(span, "http.response.header", responseLogHeaders)
 
-		if ww.BytesWritten() > 0 {
-			tm.ResponseBodySizeMetric.Record(ctx, int64(ww.BytesWritten()), metricAttrSet)
+		if bytesWritten > 0 {
+			tm.ResponseBodySizeMetric.Record(ctx, bytesWritten, metricAttrSet)
 		}
 
 		tm.RequestDurationMetric.Record(ctx, latency, metricAttrSet)
-
-		if statusCode >= http.StatusBadRequest {
-			span.SetStatus(codes.Error, description)
-			logger.LogAttrs(ctx, slog.LevelError, description, logAttrs...)
-
-			return
-		}
-
-		span.SetStatus(codes.Ok, "")
-
-		if !logger.Enabled(ctx, slog.LevelInfo) {
-			return
-		}
 
 		successLevel := slog.LevelInfo
 
@@ -288,22 +259,93 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 			successLevel = slog.LevelDebug
 		}
 
+		if !logger.Enabled(ctx, successLevel) && err == nil &&
+			statusCode < http.StatusBadRequest {
+			span.SetStatus(codes.Ok, "")
+
+			return
+		}
+
+		// build request attributes
+		requestLogAttrs := make([]slog.Attr, 0, 6)
+		requestLogAttrs = append(
+			requestLogAttrs,
+			slog.String("url", r.URL.String()),
+			slog.String("method", r.Method),
+			slog.String("remote_address", r.RemoteAddr),
+			otelutils.NewHeaderMatrixLogGroupAttrs("headers", requestLogHeaders),
+		)
+
+		if requestBodySize > 0 {
+			requestLogAttrs = append(requestLogAttrs, slog.Int64("size", requestBodySize))
+		}
+
+		if bodyStr != "" {
+			requestLogAttrs = append(requestLogAttrs, slog.String("body", bodyStr))
+		}
+
+		// build response attributes
+		responseLogAttrs := make([]slog.Attr, 0, 4)
+		responseLogAttrs = append(responseLogAttrs, slog.Int("status", statusCode))
+		responseLogAttrs = append(
+			responseLogAttrs,
+			slog.Int64("size", bytesWritten),
+			otelutils.NewHeaderMatrixLogGroupAttrs("headers", responseLogHeaders),
+		)
+
+		// skip printing very large responses.
+		if responseReader != nil && bytesWritten < 100*1024 {
+			responseBody := responseReader.String()
+			responseLogAttrs = append(responseLogAttrs, slog.String("body", responseBody))
+			span.SetAttributes(attribute.String("http.response.body", responseBody))
+		}
+
+		var logAttrs []slog.Attr
+
+		if err != nil {
+			logAttrs = make([]slog.Attr, 0, 5)
+			stack := string(debug.Stack())
+			logAttrs = append(
+				logAttrs,
+				slog.Any("error", fmt.Sprint(err)),
+				slog.String("stacktrace", stack),
+			)
+
+			span.SetAttributes(semconv.ExceptionStacktrace(stack))
+		} else {
+			logAttrs = make([]slog.Attr, 0, 3)
+		}
+
+		logAttrs = append(
+			logAttrs,
+			slog.Float64("latency", latency),
+			slog.GroupAttrs("request", requestLogAttrs...),
+			slog.GroupAttrs("response", responseLogAttrs...),
+		)
+
+		if statusCode >= http.StatusBadRequest {
+			logger.LogAttrs(ctx, slog.LevelError, http.StatusText(statusCode), logAttrs...)
+
+			return
+		}
+
 		logger.LogAttrs(ctx, successLevel, http.StatusText(statusCode), logAttrs...)
 	}
 
 	if isDebug && r.Body != nil && r.Body != http.NoBody &&
 		otelutils.IsContentTypeDebuggable(r.Header.Get(contentTypeHeader)) {
-		bodyStr, err := debugRequestBody(ww, r, logger)
+		var err error
+
+		bodyStr, err = debugRequestBody(ww, r, logger)
 		if err != nil {
 			statusCode := http.StatusUnprocessableEntity
-			traceResponse(statusCode, "failed to read request body", err)
+			traceResponse(statusCode, err)
 			span.RecordError(err)
 
 			return
 		}
 
 		span.SetAttributes(attribute.String("http.request.body", bodyStr))
-		requestLogAttrs = append(requestLogAttrs, slog.String("body", bodyStr))
 		requestBodySize = int64(len(bodyStr))
 	}
 
@@ -314,7 +356,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 	defer func() {
 		if err := recover(); err != nil {
 			statusCode := http.StatusInternalServerError
-			traceResponse(statusCode, "internal server error", err)
+			traceResponse(statusCode, err)
 
 			writeResponseJSON(w, statusCode, map[string]any{
 				"status":   statusCode,
@@ -341,42 +383,24 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 	tm.Next.ServeHTTP(ww, rr)
 
 	statusCode := ww.Status()
-	responseLogHeaders := otelutils.NewTelemetryHeaders(
-		ww.Header(),
-		tm.Options.AllowedResponseHeaders...)
-	responseLogAttrs = append(
-		responseLogAttrs,
-		slog.Int("size", ww.BytesWritten()),
-		otelutils.NewHeaderLogGroupAttrs("headers", responseLogHeaders),
-	)
-
-	span.SetAttributes(semconv.HTTPResponseBodySize(ww.BytesWritten()))
-	otelutils.SetSpanHeaderAttributes(span, "http.response.header", responseLogHeaders)
-
-	// skip printing very large responses.
-	if responseReader != nil && ww.BytesWritten() < 100*1024 {
-		responseBody := responseReader.String()
-		responseLogAttrs = append(responseLogAttrs, slog.String("body", responseBody))
-		span.SetAttributes(attribute.String("http.response.body", responseBody))
-	}
 
 	if statusCode >= http.StatusBadRequest {
-		traceResponse(statusCode, http.StatusText(statusCode), nil)
+		traceResponse(statusCode, nil)
 
 		return
 	}
 
-	traceResponse(statusCode, "success", nil)
+	traceResponse(statusCode, nil)
 }
 
 type tracingMiddlewareOptions struct {
-	HighCardinalitySpans      bool
-	HighCardinalityMetrics    bool
 	DebugPaths                []string
 	AllowedRequestHeaders     []string
 	AllowedResponseHeaders    []string
 	ResponseWriterWrapperFunc NewWrapResponseWriterFunc
 	CustomAttributesFunc      CustomAttributesFunc
+	HighCardinalitySpans      bool
+	HighCardinalityMetrics    bool
 }
 
 // CustomAttributesFunc abstracts a hook function to add custom attributes.
