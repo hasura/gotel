@@ -324,12 +324,16 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 		)
 
 		if statusCode >= http.StatusBadRequest {
-			logger.LogAttrs(ctx, slog.LevelError, http.StatusText(statusCode), logAttrs...)
+			message := http.StatusText(statusCode)
+
+			logger.LogAttrs(ctx, slog.LevelError, message, logAttrs...)
+			span.SetStatus(codes.Error, message)
 
 			return
 		}
 
 		logger.LogAttrs(ctx, successLevel, http.StatusText(statusCode), logAttrs...)
+		span.SetStatus(codes.Ok, "")
 	}
 
 	if isDebug && r.Body != nil && r.Body != http.NoBody &&
