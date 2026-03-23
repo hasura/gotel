@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/http"
 	"reflect"
+	"slices"
+	"strings"
 	"testing"
 
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -29,9 +31,9 @@ func TestExtractTelemetryHeaders(t *testing.T) {
 				"X-Empty":    []string{},
 			},
 			Expected: [][]string{
-				{"content-type", "application/json"},
-				{"authorization", MaskString},
 				{"api-key", MaskString},
+				{"authorization", MaskString},
+				{"content-type", "application/json"},
 				{"secret-key", MaskString},
 			},
 		},
@@ -47,8 +49,8 @@ func TestExtractTelemetryHeaders(t *testing.T) {
 			},
 			AllowedHeaders: []string{"Content-Type", "Api-Key"},
 			Expected: [][]string{
-				{"content-type", "application/json"},
 				{"api-key", MaskString},
+				{"content-type", "application/json"},
 			},
 		},
 	}
@@ -56,6 +58,9 @@ func TestExtractTelemetryHeaders(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
 			got := ExtractTelemetryHeaders(tc.Input, tc.AllowedHeaders...)
+			slices.SortFunc(got, func(a, b []string) int {
+				return strings.Compare(a[0], b[0])
+			})
 
 			if !reflect.DeepEqual(tc.Expected, got) {
 				t.Errorf("expected: %v, got: %v", tc.Expected, got)
