@@ -294,7 +294,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 		)
 
 		// skip printing very large responses.
-		if responseReader != nil && bytesWritten < 100*1024 {
+		if responseReader != nil {
 			responseBody := responseReader.String()
 			responseLogAttrs = append(responseLogAttrs, slog.String("body", responseBody))
 			span.SetAttributes(attribute.String("http.response.body", responseBody))
