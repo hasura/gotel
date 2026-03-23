@@ -10,7 +10,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
-func TestNewTelemetryHeaders(t *testing.T) {
+func TestExtractTelemetryHeaders(t *testing.T) {
 	testCases := []struct {
 		Name           string
 		Input          http.Header

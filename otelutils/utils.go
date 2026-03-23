@@ -128,7 +128,7 @@ func ExtractTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) 
 			row[0] = lowerKey
 			copy(row[1:], headers)
 
-			result = append(result, headers)
+			result = append(result, row)
 		}
 	}
 

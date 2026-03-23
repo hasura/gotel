@@ -75,13 +75,13 @@ func TestTracingMiddleware(t *testing.T) {
 }
 
 // cpu: Apple M3 Pro
-// BenchmarkTracingMiddleware/GET-11         	    9451	    124808 ns/op	   23384 B/op	     199 allocs/op
-// BenchmarkTracingMiddleware/POST-11        	    8905	    448215 ns/op	   22702 B/op	     192 allocs/op
+// BenchmarkTracingMiddleware/GET-11         	    9240	    127783 ns/op	   23334 B/op	     204 allocs/op
+// BenchmarkTracingMiddleware/POST-11        	    9022	    423028 ns/op	   22979 B/op	     202 allocs/op
 func BenchmarkTracingMiddleware(b *testing.B) {
-	b.Run("GET", func(b *testing.B) {
-		server := createMockServerWithTracingMiddleware()
-		defer server.Close()
+	server := createMockServerWithTracingMiddleware()
+	defer server.Close()
 
+	b.Run("GET", func(b *testing.B) {
 		for b.Loop() {
 			resp, _ := http.Get(server.URL + "/hello")
 			if resp != nil {
@@ -91,9 +91,6 @@ func BenchmarkTracingMiddleware(b *testing.B) {
 	})
 
 	b.Run("POST", func(b *testing.B) {
-		server := createMockServerWithTracingMiddleware()
-		defer server.Close()
-
 		for b.Loop() {
 			resp, _ := http.Post(server.URL+"/hello", "text/plain", bytes.NewReader([]byte("world")))
 			if resp != nil {
