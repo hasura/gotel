@@ -32,14 +32,6 @@ var excludedSpanHeaderAttributes = map[string]bool{
 	"b3":                true,
 }
 
-var sensitiveKeywords = map[byte]string{
-	'a': "uth",
-	'k': "ey",
-	's': "ecret",
-	't': "oken",
-	'p': "assword",
-}
-
 var errInvalidHostPort = errors.New("invalid host port")
 
 // SetSpanHeaderAttributes sets header attributes to the otel span.
@@ -68,32 +60,59 @@ func SetSpanHeaderAttributes(
 	span.SetAttributes(attrs...)
 }
 
-// NewTelemetryHeaders creates a new header map with sensitive values masked.
-func NewTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) map[string][]string {
-	result := map[string][]string{}
+// SetSpanHeaderMatrixAttributes sets header attributes from a matrix to the otel span.
+func SetSpanHeaderMatrixAttributes(
+	span trace.Span,
+	prefix string,
+	headers [][]string,
+	allowedHeaders ...string,
+) {
+	allowedHeadersLength := len(allowedHeaders)
+	maxLength := len(headers)
 
+	if allowedHeadersLength > 0 && allowedHeadersLength < maxLength {
+		maxLength = allowedHeadersLength
+	}
+
+	attrs := make([]attribute.KeyValue, 0, maxLength)
+
+	for _, values := range headers {
+		if (allowedHeadersLength == 0 && !excludedSpanHeaderAttributes[values[0]]) ||
+			(allowedHeadersLength > 0 && slices.Contains(allowedHeaders, values[0])) {
+			attrs = append(attrs, attribute.StringSlice(prefix+"."+values[0], values[1:]))
+		}
+	}
+
+	span.SetAttributes(attrs...)
+}
+
+// ExtractTelemetryHeaders creates matrix with sensitive values masked.
+func ExtractTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) [][]string {
 	if len(httpHeaders) == 0 {
-		return result
+		return nil
 	}
 
 	if len(allowedHeaders) > 0 {
+		result := make([][]string, 0, len(allowedHeaders))
+
 		for _, key := range allowedHeaders {
 			value := httpHeaders.Get(key)
-
 			if value == "" {
 				continue
 			}
 
 			lowerKey, isSensitive := EvaluateSensitiveHeader(key)
 			if isSensitive {
-				result[lowerKey] = []string{MaskString}
+				result = append(result, []string{lowerKey, MaskString})
 			} else {
-				result[lowerKey] = []string{value}
+				result = append(result, []string{lowerKey, value})
 			}
 		}
 
 		return result
 	}
+
+	result := make([][]string, 0, len(httpHeaders))
 
 	for key, headers := range httpHeaders {
 		if len(headers) == 0 {
@@ -102,9 +121,14 @@ func NewTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) map[
 
 		lowerKey, isSensitive := EvaluateSensitiveHeader(key)
 		if isSensitive {
-			result[lowerKey] = []string{MaskString}
+			result = append(result, []string{lowerKey, MaskString})
 		} else {
-			result[lowerKey] = headers
+			row := make([]string, len(headers)+1)
+
+			row[0] = lowerKey
+			copy(row[1:], headers)
+
+			result = append(result, row)
 		}
 	}
 
@@ -131,8 +155,20 @@ func EvaluateSensitiveHeader(name string) (string, bool) {
 	for i := range len(lowerBytes) - 2 {
 		lc := lowerBytes[i]
 
-		keyword, ok := sensitiveKeywords[lc]
-		if !ok {
+		var keyword string
+
+		switch lc {
+		case 'a':
+			keyword = "uth"
+		case 'k':
+			keyword = "ey"
+		case 's':
+			keyword = "ecret"
+		case 't':
+			keyword = "oken"
+		case 'p':
+			keyword = "assword"
+		default:
 			continue
 		}
 

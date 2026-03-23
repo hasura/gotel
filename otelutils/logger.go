@@ -60,6 +60,26 @@ func NewHeaderLogGroupAttrs(key string, headers http.Header) slog.Attr {
 	return slog.GroupAttrs(key, headerAttrs...)
 }
 
+// NewHeaderMatrixLogGroupAttrs converts a header matrix to slog attributes.
+func NewHeaderMatrixLogGroupAttrs(key string, headers [][]string) slog.Attr {
+	headerAttrs := make([]slog.Attr, 0, len(headers))
+
+	for _, values := range headers {
+		switch len(values) {
+		case 0, 1:
+		case 2:
+			headerAttrs = append(headerAttrs, slog.String(values[0], values[1]))
+		default:
+			headerAttrs = append(
+				headerAttrs,
+				slog.String(values[0], strings.Join(values[1:], ", ")),
+			)
+		}
+	}
+
+	return slog.GroupAttrs(key, headerAttrs...)
+}
+
 // GetLoggerFromContext gets the logger instance from context.
 func GetLoggerFromContext(ctx context.Context) (*slog.Logger, bool) {
 	value := ctx.Value(LoggerContextKey)

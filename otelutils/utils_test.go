@@ -10,12 +10,12 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 )
 
-func TestNewTelemetryHeaders(t *testing.T) {
+func TestExtractTelemetryHeaders(t *testing.T) {
 	testCases := []struct {
 		Name           string
 		Input          http.Header
 		AllowedHeaders []string
-		Expected       map[string][]string
+		Expected       [][]string
 	}{
 		{
 			Name: "basic",
@@ -28,11 +28,11 @@ func TestNewTelemetryHeaders(t *testing.T) {
 				"Secret-Key": []string{"secret-key"},
 				"X-Empty":    []string{},
 			},
-			Expected: map[string][]string{
-				"content-type":  {"application/json"},
-				"authorization": {MaskString},
-				"api-key":       {MaskString},
-				"secret-key":    {MaskString},
+			Expected: [][]string{
+				{"content-type", "application/json"},
+				{"authorization", MaskString},
+				{"api-key", MaskString},
+				{"secret-key", MaskString},
 			},
 		},
 		{
@@ -46,16 +46,16 @@ func TestNewTelemetryHeaders(t *testing.T) {
 				"Secret-Key": []string{"secret-key"},
 			},
 			AllowedHeaders: []string{"Content-Type", "Api-Key"},
-			Expected: map[string][]string{
-				"content-type": {"application/json"},
-				"api-key":      {MaskString},
+			Expected: [][]string{
+				{"content-type", "application/json"},
+				{"api-key", MaskString},
 			},
 		},
 	}
 
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-			got := NewTelemetryHeaders(tc.Input, tc.AllowedHeaders...)
+			got := ExtractTelemetryHeaders(tc.Input, tc.AllowedHeaders...)
 
 			if !reflect.DeepEqual(tc.Expected, got) {
 				t.Errorf("expected: %v, got: %v", tc.Expected, got)
