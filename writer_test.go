@@ -78,7 +78,7 @@ func TestBasicWriter_Write(t *testing.T) {
 			t.Errorf("expected %d bytes written, got %d", len(data), n)
 		}
 
-		if bw.BytesWritten() != int64(len(data)) {
+		if bw.BytesWritten() != len(data) {
 			t.Errorf("expected BytesWritten %d, got %d", len(data), bw.BytesWritten())
 		}
 
@@ -162,7 +162,7 @@ func TestBasicWriter_Write(t *testing.T) {
 		}
 
 		// BytesWritten should still track the bytes
-		if bw.BytesWritten() != int64(len(data)) {
+		if bw.BytesWritten() != len(data) {
 			t.Errorf("expected BytesWritten %d, got %d", len(data), bw.BytesWritten())
 		}
 	})

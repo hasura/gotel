@@ -244,11 +244,11 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 			ww.Header(),
 			tm.Options.AllowedResponseHeaders...)
 
-		span.SetAttributes(semconv.HTTPResponseBodySizeKey.Int64(bytesWritten))
+		span.SetAttributes(semconv.HTTPResponseBodySizeKey.Int(bytesWritten))
 		otelutils.SetSpanHeaderMatrixAttributes(span, "http.response.header", responseLogHeaders)
 
 		if bytesWritten > 0 {
-			tm.ResponseBodySizeMetric.Record(ctx, bytesWritten, metricAttrSet)
+			tm.ResponseBodySizeMetric.Record(ctx, int64(bytesWritten), metricAttrSet)
 		}
 
 		tm.RequestDurationMetric.Record(ctx, latency, metricAttrSet)
@@ -289,7 +289,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 		responseLogAttrs = append(responseLogAttrs, slog.Int("status", statusCode))
 		responseLogAttrs = append(
 			responseLogAttrs,
-			slog.Int64("size", bytesWritten),
+			slog.Int("size", bytesWritten),
 			otelutils.NewHeaderMatrixLogGroupAttrs("headers", responseLogHeaders),
 		)
 

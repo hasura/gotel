@@ -17,7 +17,7 @@ type WrapResponseWriter interface {
 	// yet been sent.
 	Status() int
 	// BytesWritten returns the total number of bytes sent to the client.
-	BytesWritten() int64
+	BytesWritten() int
 	// Tee causes the response body to be written to the given io.Writer in
 	// addition to proxying the writes through. Only one io.Writer can be
 	// tee'd to at once: setting a second one will overwrite the first.
@@ -43,7 +43,7 @@ type basicWriter struct {
 	http.ResponseWriter
 
 	tee         io.Writer
-	bytes       int64
+	bytes       int
 	code        int16
 	wroteHeader bool
 	discard     bool
@@ -92,7 +92,7 @@ func (b *basicWriter) Write(buf []byte) (int, error) {
 		n, err = io.Discard.Write(buf)
 	}
 
-	b.bytes += int64(n)
+	b.bytes += n
 
 	return n, err
 }
@@ -101,7 +101,7 @@ func (b *basicWriter) Status() int {
 	return int(b.code)
 }
 
-func (b *basicWriter) BytesWritten() int64 {
+func (b *basicWriter) BytesWritten() int {
 	return b.bytes
 }
 
