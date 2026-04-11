@@ -6,7 +6,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
@@ -78,14 +77,4 @@ func writeResponseJSON(w http.ResponseWriter, statusCode int, body any, logger *
 	if err != nil {
 		logger.Error("failed to write response: " + err.Error())
 	}
-}
-
-func toLowerStrings(values []string) []string {
-	results := make([]string, len(values))
-
-	for i, item := range values {
-		results[i] = strings.ToLower(item)
-	}
-
-	return results
 }

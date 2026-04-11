@@ -231,9 +231,9 @@ func TestExtractTelemetryHeadersWithSensitivePatterns(t *testing.T) {
 		{
 			Name: "custom sensitive pattern masks matching header",
 			Input: http.Header{
-				"Content-Type":   []string{"application/json"},
-				"X-My-Cred":      []string{"super-secret"},
-				"X-Request-Id":   []string{"req-123"},
+				"Content-Type": []string{"application/json"},
+				"X-My-Cred":    []string{"super-secret"},
+				"X-Request-Id": []string{"req-123"},
 			},
 			SensitivePatterns: []string{"cred"},
 			Expected: [][]string{
@@ -605,6 +605,32 @@ func TestSetSpanHeaderAttributes(t *testing.T) {
 		}
 		if foundUserAgent {
 			t.Error("user-agent should not be included when not in allowed list")
+		}
+	})
+}
+
+func TestNormalizeStrings(t *testing.T) {
+	t.Run("converts strings to lowercase", func(t *testing.T) {
+		input := []string{"Hello", "WORLD", "TeSt"}
+		expected := []string{"hello", "world", "test"}
+
+		result := NormalizeStrings(input)
+
+		if len(result) != len(expected) {
+			t.Fatalf("expected length %d, got %d", len(expected), len(result))
+		}
+
+		for i, v := range result {
+			if v != expected[i] {
+				t.Errorf("at index %d: expected '%s', got '%s'", i, expected[i], v)
+			}
+		}
+	})
+
+	t.Run("handles empty slice", func(t *testing.T) {
+		result := NormalizeStrings([]string{})
+		if len(result) != 0 {
+			t.Errorf("expected empty slice, got length %d", len(result))
 		}
 	})
 }

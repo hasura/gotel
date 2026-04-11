@@ -441,7 +441,7 @@ func WithCustomAttributesFunc(fn CustomAttributesFunc) TracingMiddlewareOption {
 // WithSensitivePatterns set the option to add sensitive patterns to be masked.
 func WithSensitivePatterns(patterns []string) TracingMiddlewareOption {
 	return func(tmo *tracingMiddlewareOptions) {
-		tmo.SensitivePatterns = patterns
+		tmo.SensitivePatterns = otelutils.NormalizeStrings(patterns)
 	}
 }
 
@@ -457,7 +457,7 @@ func WithDebugPaths(paths []string) TracingMiddlewareOption {
 // If empty, all headers are allowed.
 func WithAllowedRequestHeaders(names []string) TracingMiddlewareOption {
 	return func(tmo *tracingMiddlewareOptions) {
-		tmo.AllowedRequestHeaders = toLowerStrings(names)
+		tmo.AllowedRequestHeaders = otelutils.NormalizeStrings(names)
 	}
 }
 
@@ -465,7 +465,7 @@ func WithAllowedRequestHeaders(names []string) TracingMiddlewareOption {
 // If empty, all headers are allowed.
 func WithAllowedResponseHeaders(names []string) TracingMiddlewareOption {
 	return func(tmo *tracingMiddlewareOptions) {
-		tmo.AllowedResponseHeaders = toLowerStrings(names)
+		tmo.AllowedResponseHeaders = otelutils.NormalizeStrings(names)
 	}
 }
 

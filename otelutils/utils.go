@@ -162,6 +162,10 @@ func IsSensitiveHeader(name string, patterns ...string) bool {
 	}
 
 	for _, word := range patterns {
+		if word == "" {
+			continue
+		}
+
 		if strings.Contains(name, word) {
 			return true
 		}
@@ -225,4 +229,15 @@ func IsContentTypeDebuggable(contentType string) bool {
 		strings.HasPrefix(contentType, "text/") ||
 		strings.HasPrefix(contentType, "application/xml") ||
 		strings.HasPrefix(contentType, "multipart/form-data")
+}
+
+// NormalizeStrings normalize input strings to the standard format for telemetry evaluation.
+func NormalizeStrings(values []string) []string {
+	results := make([]string, len(values))
+
+	for i, item := range values {
+		results[i] = strings.ToLower(strings.TrimSpace(item))
+	}
+
+	return results
 }
