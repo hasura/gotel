@@ -152,6 +152,153 @@ func TestEvaluateSensitiveHeader(t *testing.T) {
 	}
 }
 
+func TestIsSensitiveHeaderCustomPatterns(t *testing.T) {
+	testCases := []struct {
+		Name        string
+		Input       string
+		Patterns    []string
+		IsSensitive bool
+	}{
+		{
+			Name:        "matches custom pattern",
+			Input:       "x-my-credential",
+			Patterns:    []string{"credential"},
+			IsSensitive: true,
+		},
+		{
+			Name:        "does not match custom pattern",
+			Input:       "content-type",
+			Patterns:    []string{"credential"},
+			IsSensitive: false,
+		},
+		{
+			Name:        "custom pattern overrides default keywords",
+			Input:       "authorization",
+			Patterns:    []string{"credential"},
+			IsSensitive: false,
+		},
+		{
+			Name:        "multiple patterns – first matches",
+			Input:       "x-api-token",
+			Patterns:    []string{"credential", "token"},
+			IsSensitive: true,
+		},
+		{
+			Name:        "multiple patterns – second matches",
+			Input:       "x-api-credential",
+			Patterns:    []string{"token", "credential"},
+			IsSensitive: true,
+		},
+		{
+			Name:        "multiple patterns – none match",
+			Input:       "content-type",
+			Patterns:    []string{"token", "credential"},
+			IsSensitive: false,
+		},
+		{
+			Name:        "empty pattern list falls back to default keywords",
+			Input:       "authorization",
+			Patterns:    []string{},
+			IsSensitive: true,
+		},
+		{
+			Name:        "short header with empty patterns falls back to default and is not sensitive",
+			Input:       "xy",
+			Patterns:    []string{},
+			IsSensitive: false,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			isSensitive := IsSensitiveHeader(tc.Input, tc.Patterns...)
+			if isSensitive != tc.IsSensitive {
+				t.Errorf("IsSensitiveHeader(%q, %v): expected %v, got %v",
+					tc.Input, tc.Patterns, tc.IsSensitive, isSensitive)
+			}
+		})
+	}
+}
+
+func TestExtractTelemetryHeadersWithSensitivePatterns(t *testing.T) {
+	testCases := []struct {
+		Name              string
+		Input             http.Header
+		SensitivePatterns []string
+		AllowedHeaders    []string
+		Expected          [][]string
+	}{
+		{
+			Name: "custom sensitive pattern masks matching header",
+			Input: http.Header{
+				"Content-Type":   []string{"application/json"},
+				"X-My-Cred":      []string{"super-secret"},
+				"X-Request-Id":   []string{"req-123"},
+			},
+			SensitivePatterns: []string{"cred"},
+			Expected: [][]string{
+				{"content-type", "application/json"},
+				{"x-my-cred", MaskString},
+				{"x-request-id", "req-123"},
+			},
+		},
+		{
+			Name: "custom patterns override defaults – authorization not masked",
+			Input: http.Header{
+				"Authorization": []string{"Bearer token123"},
+				"X-Api-Cred":    []string{"secret-value"},
+			},
+			SensitivePatterns: []string{"cred"},
+			Expected: [][]string{
+				{"authorization", "Bearer token123"},
+				{"x-api-cred", MaskString},
+			},
+		},
+		{
+			Name: "custom patterns with allowed headers filter",
+			Input: http.Header{
+				"Content-Type": []string{"application/json"},
+				"X-My-Cred":    []string{"super-secret"},
+				"Accept":       []string{"*/*"},
+			},
+			SensitivePatterns: []string{"cred"},
+			AllowedHeaders:    []string{"Content-Type", "X-My-Cred"},
+			Expected: [][]string{
+				{"content-type", "application/json"},
+				{"x-my-cred", MaskString},
+			},
+		},
+		{
+			Name: "nil sensitive patterns uses default keywords",
+			Input: http.Header{
+				"Authorization": []string{"Bearer abc"},
+				"Content-Type":  []string{"application/json"},
+			},
+			SensitivePatterns: nil,
+			Expected: [][]string{
+				{"authorization", MaskString},
+				{"content-type", "application/json"},
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.Name, func(t *testing.T) {
+			got := ExtractTelemetryHeaders(tc.Input, tc.SensitivePatterns, tc.AllowedHeaders...)
+			slices.SortFunc(got, func(a, b []string) int {
+				return strings.Compare(a[0], b[0])
+			})
+			slices.SortFunc(tc.Expected, func(a, b []string) int {
+				return strings.Compare(a[0], b[0])
+			})
+
+			if !reflect.DeepEqual(tc.Expected, got) {
+				t.Errorf("expected: %v, got: %v", tc.Expected, got)
+			}
+		})
+	}
+}
+
 func TestSplitHostPort(t *testing.T) {
 	testCases := []struct {
 		Name         string
