@@ -197,6 +197,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 	requestBodySize := r.ContentLength
 	requestLogHeaders := otelutils.ExtractTelemetryHeaders(
 		r.Header,
+		tm.Options.SensitivePatterns,
 		tm.Options.AllowedRequestHeaders...)
 
 	otelutils.SetSpanHeaderMatrixAttributes(span, "http.request.header", requestLogHeaders)
@@ -242,6 +243,7 @@ func (tm *tracingMiddleware) ServeHTTP( //nolint:gocognit,cyclop,funlen,maintidx
 		bytesWritten := ww.BytesWritten()
 		responseLogHeaders := otelutils.ExtractTelemetryHeaders(
 			ww.Header(),
+			tm.Options.SensitivePatterns,
 			tm.Options.AllowedResponseHeaders...)
 
 		span.SetAttributes(semconv.HTTPResponseBodySizeKey.Int(bytesWritten))
@@ -401,6 +403,7 @@ type tracingMiddlewareOptions struct {
 	DebugPaths                []string
 	AllowedRequestHeaders     []string
 	AllowedResponseHeaders    []string
+	SensitivePatterns         []string
 	ResponseWriterWrapperFunc NewWrapResponseWriterFunc
 	CustomAttributesFunc      CustomAttributesFunc
 	HighCardinalitySpans      bool
@@ -435,6 +438,13 @@ func WithCustomAttributesFunc(fn CustomAttributesFunc) TracingMiddlewareOption {
 	}
 }
 
+// WithSensitivePatterns set the option to add sensitive patterns to be masked.
+func WithSensitivePatterns(patterns []string) TracingMiddlewareOption {
+	return func(tmo *tracingMiddlewareOptions) {
+		tmo.SensitivePatterns = otelutils.NormalizeStrings(patterns)
+	}
+}
+
 // WithDebugPaths return an option to add request paths to be printed logs in the debug level.
 // By default, metrics and health check endpoints are added to avoid noisy logs.
 func WithDebugPaths(paths []string) TracingMiddlewareOption {
@@ -443,19 +453,19 @@ func WithDebugPaths(paths []string) TracingMiddlewareOption {
 	}
 }
 
-// AllowRequestHeaders return an option to set allowed request headers.
+// WithAllowedRequestHeaders return an option to set allowed request headers.
 // If empty, all headers are allowed.
-func AllowRequestHeaders(names []string) TracingMiddlewareOption {
+func WithAllowedRequestHeaders(names []string) TracingMiddlewareOption {
 	return func(tmo *tracingMiddlewareOptions) {
-		tmo.AllowedRequestHeaders = toLowerStrings(names)
+		tmo.AllowedRequestHeaders = otelutils.NormalizeStrings(names)
 	}
 }
 
-// AllowResponseHeaders return an option to set allowed response headers.
+// WithAllowedResponseHeaders return an option to set allowed response headers.
 // If empty, all headers are allowed.
-func AllowResponseHeaders(names []string) TracingMiddlewareOption {
+func WithAllowedResponseHeaders(names []string) TracingMiddlewareOption {
 	return func(tmo *tracingMiddlewareOptions) {
-		tmo.AllowedResponseHeaders = toLowerStrings(names)
+		tmo.AllowedResponseHeaders = otelutils.NormalizeStrings(names)
 	}
 }
 

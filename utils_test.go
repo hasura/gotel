@@ -132,29 +132,3 @@ func TestWriteResponseJSON(t *testing.T) {
 		}
 	})
 }
-
-func TestToLowerStrings(t *testing.T) {
-	t.Run("converts strings to lowercase", func(t *testing.T) {
-		input := []string{"Hello", "WORLD", "TeSt"}
-		expected := []string{"hello", "world", "test"}
-
-		result := toLowerStrings(input)
-
-		if len(result) != len(expected) {
-			t.Fatalf("expected length %d, got %d", len(expected), len(result))
-		}
-
-		for i, v := range result {
-			if v != expected[i] {
-				t.Errorf("at index %d: expected '%s', got '%s'", i, expected[i], v)
-			}
-		}
-	})
-
-	t.Run("handles empty slice", func(t *testing.T) {
-		result := toLowerStrings([]string{})
-		if len(result) != 0 {
-			t.Errorf("expected empty slice, got length %d", len(result))
-		}
-	})
-}

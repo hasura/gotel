@@ -100,6 +100,92 @@ func BenchmarkTracingMiddleware(b *testing.B) {
 	})
 }
 
+func TestWithSensitivePatterns(t *testing.T) {
+	// Build a server that uses a custom sensitive pattern so we can verify
+	// the option is wired through without panicking and the middleware still
+	// serves requests correctly.
+	mux := http.NewServeMux()
+
+	logger := slog.New(slog.NewJSONHandler(io.Discard, &slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	}))
+	exporters := &OTelExporters{
+		Tracer: NewTracer("test-sensitive"),
+		Meter:  otel.Meter("test-sensitive"),
+		Logger: logger,
+		Shutdown: func(ctx context.Context) error {
+			return nil
+		},
+	}
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("ok"))
+	})
+
+	options := []TracingMiddlewareOption{
+		WithAllowedRequestHeaders([]string{}),
+		WithAllowedResponseHeaders([]string{"Content-Type"}),
+		WithSensitivePatterns([]string{"credential", "x-custom-secret"}),
+	}
+
+	mux.Handle("/sensitive", NewTracingMiddleware(exporters, options...)(handler))
+	server := httptest.NewServer(mux)
+	defer server.Close()
+
+	t.Run("request with sensitive header is served successfully", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, server.URL+"/sensitive", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		req.Header.Set("X-Custom-Secret", "should-be-masked")
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+		if string(body) != "ok" {
+			t.Fatalf("expected body 'ok', got %q", string(body))
+		}
+	})
+}
+
+func TestWithAllowedHeaders(t *testing.T) {
+	// Verify that WithAllowedRequestHeaders and WithAllowedResponseHeaders
+	// apply their allow-lists to the middleware options correctly.
+	tmo := &tracingMiddlewareOptions{}
+
+	WithAllowedRequestHeaders([]string{"Content-Type", "X-Request-ID"})(tmo)
+	if len(tmo.AllowedRequestHeaders) != 2 {
+		t.Fatalf("expected 2 allowed request headers, got %d", len(tmo.AllowedRequestHeaders))
+	}
+	// Values should be lower-cased.
+	if tmo.AllowedRequestHeaders[0] != "content-type" {
+		t.Errorf("expected 'content-type', got %q", tmo.AllowedRequestHeaders[0])
+	}
+	if tmo.AllowedRequestHeaders[1] != "x-request-id" {
+		t.Errorf("expected 'x-request-id', got %q", tmo.AllowedRequestHeaders[1])
+	}
+
+	WithAllowedResponseHeaders([]string{"Cache-Control"})(tmo)
+	if len(tmo.AllowedResponseHeaders) != 1 {
+		t.Fatalf("expected 1 allowed response header, got %d", len(tmo.AllowedResponseHeaders))
+	}
+	if tmo.AllowedResponseHeaders[0] != "cache-control" {
+		t.Errorf("expected 'cache-control', got %q", tmo.AllowedResponseHeaders[0])
+	}
+}
+
 func createMockServerWithTracingMiddleware() *httptest.Server {
 	mux := http.NewServeMux()
 
@@ -124,8 +210,8 @@ func createMockServerWithTracingMiddleware() *httptest.Server {
 	})
 
 	options := []TracingMiddlewareOption{
-		AllowRequestHeaders([]string{}),
-		AllowResponseHeaders([]string{"Content-Type"}),
+		WithAllowedRequestHeaders([]string{}),
+		WithAllowedResponseHeaders([]string{"Content-Type"}),
 		WithDebugPaths([]string{"/world"}),
 		WithHighCardinalitySpans(false),
 		WithHighCardinalityMetrics(true),
