@@ -124,8 +124,8 @@ func createMockServerWithTracingMiddleware() *httptest.Server {
 	})
 
 	options := []TracingMiddlewareOption{
-		AllowRequestHeaders([]string{}),
-		AllowResponseHeaders([]string{"Content-Type"}),
+		WithAllowedRequestHeaders([]string{}),
+		WithAllowedResponseHeaders([]string{"Content-Type"}),
 		WithDebugPaths([]string{"/world"}),
 		WithHighCardinalitySpans(false),
 		WithHighCardinalityMetrics(true),

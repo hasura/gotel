@@ -57,7 +57,7 @@ func TestExtractTelemetryHeaders(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-			got := ExtractTelemetryHeaders(tc.Input, tc.AllowedHeaders...)
+			got := ExtractTelemetryHeaders(tc.Input, nil, tc.AllowedHeaders...)
 			slices.SortFunc(got, func(a, b []string) int {
 				return strings.Compare(a[0], b[0])
 			})
@@ -138,7 +138,8 @@ func TestEvaluateSensitiveHeader(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.Name, func(t *testing.T) {
-			key, isSensitive := EvaluateSensitiveHeader(tc.Input)
+			key := strings.ToLower(tc.Input)
+			isSensitive := IsSensitiveHeader(key)
 
 			if key != tc.ExpectedKey {
 				t.Errorf("expected key '%s', got '%s'", tc.ExpectedKey, key)

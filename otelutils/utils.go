@@ -32,6 +32,14 @@ var excludedSpanHeaderAttributes = map[string]bool{
 	"b3":                true,
 }
 
+var sensitiveKeywords = []string{
+	"auth",
+	"password",
+	"key",
+	"secret",
+	"token",
+}
+
 var errInvalidHostPort = errors.New("invalid host port")
 
 // SetSpanHeaderAttributes sets header attributes to the otel span.
@@ -87,7 +95,11 @@ func SetSpanHeaderMatrixAttributes(
 }
 
 // ExtractTelemetryHeaders creates matrix with sensitive values masked.
-func ExtractTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) [][]string {
+func ExtractTelemetryHeaders(
+	httpHeaders http.Header,
+	sensitivePatterns []string,
+	allowedHeaders ...string,
+) [][]string {
 	if len(httpHeaders) == 0 {
 		return nil
 	}
@@ -101,7 +113,9 @@ func ExtractTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) 
 				continue
 			}
 
-			lowerKey, isSensitive := EvaluateSensitiveHeader(key)
+			lowerKey := strings.ToLower(key)
+			isSensitive := IsSensitiveHeader(lowerKey, sensitivePatterns...)
+
 			if isSensitive {
 				result = append(result, []string{lowerKey, MaskString})
 			} else {
@@ -119,7 +133,9 @@ func ExtractTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) 
 			continue
 		}
 
-		lowerKey, isSensitive := EvaluateSensitiveHeader(key)
+		lowerKey := strings.ToLower(key)
+		isSensitive := IsSensitiveHeader(lowerKey, sensitivePatterns...)
+
 		if isSensitive {
 			result = append(result, []string{lowerKey, MaskString})
 		} else {
@@ -135,58 +151,23 @@ func ExtractTelemetryHeaders(httpHeaders http.Header, allowedHeaders ...string) 
 	return result
 }
 
-// EvaluateSensitiveHeader checks if the header name is sensitive.
-func EvaluateSensitiveHeader(name string) (string, bool) {
-	lowerBytes := make([]byte, len(name))
-
-	for i := range name {
-		c := name[i]
-		if c >= 'A' && c <= 'Z' {
-			c += 'a' - 'A'
+// IsSensitiveHeader checks if the header name is sensitive.
+func IsSensitiveHeader(name string, patterns ...string) bool {
+	if len(patterns) == 0 {
+		if len(name) < 3 {
+			return false
 		}
 
-		lowerBytes[i] = c
+		patterns = sensitiveKeywords
 	}
 
-	if len(name) < 3 {
-		return string(lowerBytes), false
-	}
-
-	for i := range len(lowerBytes) - 2 {
-		lc := lowerBytes[i]
-
-		var keyword string
-
-		switch lc {
-		case 'a':
-			keyword = "uth"
-		case 'k':
-			keyword = "ey"
-		case 's':
-			keyword = "ecret"
-		case 't':
-			keyword = "oken"
-		case 'p':
-			keyword = "assword"
-		default:
-			continue
-		}
-
-		j := 0
-		keywordLength := len(keyword)
-
-		for ; j < keywordLength; j++ {
-			if lowerBytes[i+j+1] != keyword[j] {
-				break
-			}
-		}
-
-		if j == keywordLength {
-			return string(lowerBytes), true
+	for _, word := range patterns {
+		if strings.Contains(name, word) {
+			return true
 		}
 	}
 
-	return string(lowerBytes), false
+	return false
 }
 
 // SplitHostPort splits a network address hostport of the form "host",
@@ -206,6 +187,7 @@ func SplitHostPort(hostport string, urlScheme string) (string, int, error) {
 		port = 443
 	}
 
+	// Check if the host is IPv6, and set the default HTTP(S) port if the input string does not have the port.
 	if strings.HasPrefix(hostport, "[") {
 		addrEnd := strings.LastIndex(hostport, "]")
 		if addrEnd < 0 {
