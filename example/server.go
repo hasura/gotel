@@ -55,8 +55,8 @@ func main() {
 	})
 
 	options := []gotel.TracingMiddlewareOption{
-		gotel.AllowRequestHeaders([]string{}),
-		gotel.AllowResponseHeaders([]string{"Content-Type"}),
+		gotel.WithAllowedRequestHeaders([]string{}),
+		gotel.WithAllowedResponseHeaders([]string{"Content-Type"}),
 		gotel.WithDebugPaths([]string{"/world"}),
 		gotel.WithHighCardinalitySpans(true),
 		gotel.WithHighCardinalityMetrics(false),
