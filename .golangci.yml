@@ -11,6 +11,8 @@ linters:
     - tagalign
     - ireturn
     - varnamelen
+    - gomodguard
+    - goconst
   settings:
     depguard:
       rules:
