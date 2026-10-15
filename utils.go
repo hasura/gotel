@@ -6,8 +6,8 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"uuid"
 
-	"github.com/google/uuid"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -36,7 +36,7 @@ func getRequestID(r *http.Request) string {
 		return spanContext.TraceID().String()
 	}
 
-	return uuid.NewString()
+	return uuid.New().String()
 }
 
 func debugRequestBody(w http.ResponseWriter, r *http.Request, logger *slog.Logger) (string, error) {
