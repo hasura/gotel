@@ -43,7 +43,7 @@ func main() {
 		_, span := ts.Tracer.Start(r.Context(), "hello")
 		defer span.End()
 
-		w.Write([]byte(fmt.Sprintf("%s %s", r.Method, html.EscapeString(r.URL.Path))))
+		fmt.Fprintf(w, "%s %s", r.Method, html.EscapeString(r.URL.Path))
 	})
 
 	panicHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

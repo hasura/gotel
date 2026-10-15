@@ -26,7 +26,7 @@ func getDefaultPtr[T any](value *T, defaultValue *T) *T {
 }
 
 func getRequestID(r *http.Request) string {
-	requestID := r.Header.Get("x-request-id")
+	requestID := r.Header.Get("X-Request-ID")
 	if requestID != "" {
 		return requestID
 	}

@@ -199,15 +199,13 @@ func SplitHostPort(hostport string, urlScheme string) (string, int, error) {
 			return "", port, errInvalidHostPort
 		}
 
-		if i := strings.LastIndex(hostport[addrEnd:], ":"); i < 0 {
+		if !strings.Contains(hostport[addrEnd:], ":") {
 			host := hostport[1:addrEnd]
 
 			return host, port, nil
 		}
-	} else {
-		if i := strings.LastIndex(hostport, ":"); i < 0 {
-			return hostport, port, nil
-		}
+	} else if !strings.Contains(hostport, ":") {
+		return hostport, port, nil
 	}
 
 	host, pStr, err := net.SplitHostPort(hostport)
