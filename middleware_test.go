@@ -202,7 +202,7 @@ func createMockServerWithTracingMiddleware() *httptest.Server {
 	}
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(fmt.Sprintf("%s %s", r.Method, r.URL.Path)))
+		fmt.Fprintf(w, "%s %s", r.Method, r.URL.Path)
 	})
 
 	panicHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
