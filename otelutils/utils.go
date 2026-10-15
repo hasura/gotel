@@ -204,10 +204,8 @@ func SplitHostPort(hostport string, urlScheme string) (string, int, error) {
 
 			return host, port, nil
 		}
-	} else {
-		if strings.Contains(hostport, ":") {
-			return hostport, port, nil
-		}
+	} else if strings.Contains(hostport, ":") {
+		return hostport, port, nil
 	}
 
 	host, pStr, err := net.SplitHostPort(hostport)
